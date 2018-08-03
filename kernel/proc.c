@@ -443,11 +443,13 @@ reschedule(void)
   sched();
   // NOTE: there is a race here.  We need to release the process
   // table lock before idling the CPU, but as soon as we do, it
-  // is possible that an interrupt or an event on another CPU could
-  // cause a process to become ready to run.  The undesirable
-  // (but non-catastrophic) consequence of such an occurrence is that
-  // this CPU will idle until the next timer interrupt, when in fact
-  // it could have been doing useful work.
+  // is possible that an an event on another CPU could cause a process
+  // to become ready to run.  The undesirable (but non-catastrophic)
+  // consequence of such an occurrence is that this CPU will idle until
+  // the next timer interrupt, when in fact it could have been doing
+  // useful work.  To do better than this, we would need to arrange
+  // for a CPU releasing the process table lock to interrupt all other
+  // CPUs if there could be any runnable processes.
   release(&ptable.lock);
 }
 
