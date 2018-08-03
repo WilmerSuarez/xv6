@@ -1,7 +1,7 @@
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
-  struct context *scheduler;   // swtch() here to enter scheduler
+  struct context *scheduler;   // Context used by scheduler and idle loop
   struct taskstate ts;         // Used by x86 to find stack for interrupt
   struct segdesc gdt[NSEGS];   // x86 global descriptor table
   volatile uint started;       // Has the CPU started?

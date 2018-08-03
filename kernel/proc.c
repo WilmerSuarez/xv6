@@ -19,6 +19,8 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+static void sched(void);
+static struct proc *roundrobin(void);
 
 void
 pinit(void)
@@ -312,73 +314,141 @@ wait(void)
 }
 
 //PAGEBREAK: 42
-// Per-CPU process scheduler.
-// Each CPU calls scheduler() after setting itself up.
-// Scheduler never returns.  It loops, doing:
-//  - choose a process to run
-//  - swtch to start running that process
-//  - eventually that process transfers control
-//      via swtch back to the scheduler.
+// Per-CPU idle loop.
+// Each CPU calls idle() after setting itself up.
+// Idle never returns.  It loops, executing a HLT instruction in each
+// iteration.  The HLT instruction waits for an interrupt (such as a
+// timer interrupt) to occur.  Actual work gets done by the CPU when
+// the scheduler is invoked to switch the CPU from the idle loop to
+// a process context.
 void
-scheduler(void)
+idle(void)
 {
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
-  
-  for(;;){
-    // Enable interrupts on this processor.
-    sti();
-
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->state != RUNNABLE)
-        continue;
-
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
-
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
-    }
-    release(&ptable.lock);
-
+  sti(); // Enable interrupts on this processor
+  for(;;) {
+    if(!(readeflags()&FL_IF))
+      panic("idle non-interruptible");
+    pushcli();
+    //cprintf("cpu %d idling\n", cpuid());
+    popcli();
+    hlt(); // Wait for an interrupt
   }
 }
 
-// Enter scheduler.  Must hold only ptable.lock
-// and have changed proc->state. Saves and restores
-// intena because intena is a property of this
-// kernel thread, not this CPU. It should
-// be proc->intena and proc->ncli, but that would
-// break in the few places where a lock is held but
-// there's no process.
-void
+// The process scheduler.
+//
+// Assumes ptable.lock is held, and no other locks.
+// Assumes interrupts are disabled on this CPU.
+// Assumes proc->state != RUNNING (a process must have changed its
+// state before calling the scheduler).
+// Saves and restores intena because the original xv6 code did.
+// (Original comment:  Saves and restores intena because intena is
+// a property of this kernel thread, not this CPU. It should
+// be proc->intena and proc->ncli, but that would break in the few
+// places where a lock is held but there's no process.)
+//
+// When invoked, does the following:
+//  - choose a process to run
+//  - swtch to start running that process (or idle, if none)
+//  - eventually that process transfers control
+//      via swtch back to the scheduler.
+
+static void
 sched(void)
 {
   int intena;
-  struct proc *p = myproc();
-
+  struct proc *p;
+  struct context **oldcontext;
+  struct cpu *c = mycpu();
+  
   if(!holding(&ptable.lock))
     panic("sched ptable.lock");
-  if(mycpu()->ncli != 1)
+  if(c->ncli != 1)
     panic("sched locks");
-  if(p->state == RUNNING)
-    panic("sched running");
   if(readeflags()&FL_IF)
     panic("sched interruptible");
-  intena = mycpu()->intena;
-  swtch(&p->context, mycpu()->scheduler);
-  mycpu()->intena = intena;
+
+  // Determine the current context, which is what we are switching from.
+  if(c->proc) {
+    //cprintf("sched(cpu %d): from proc %d\n", cpuid(), c->proc->pid);
+    if(c->proc->state == RUNNING)
+      panic("sched running");
+    oldcontext = &c->proc->context;
+  } else {
+    //cprintf("sched(cpu %d): from idle\n", cpuid());
+    oldcontext = &(c->scheduler);
+  }
+
+  // Choose next process to run.
+  if((p = roundrobin()) != 0) {
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    p->state = RUNNING;
+    switchuvm(p);
+    if(c->proc != p) {
+      //cprintf("sched(cpu %d): switch to process %d\n", cpuid(), c->proc->pid);
+      c->proc = p;
+      intena = c->intena;
+      swtch(oldcontext, p->context);
+      mycpu()->intena = intena;  // We might return on a different CPU.
+    }
+  } else {
+    // No process to run -- switch to the idle loop.
+    //cprintf("sched(cpu %d): no process\n", cpuid());
+    switchkvm();
+    if(oldcontext != &(c->scheduler)) {
+      //cprintf("sched(cpu %d): idling\n", cpuid());
+      c->proc = 0;
+      intena = c->intena;
+      swtch(oldcontext, c->scheduler);
+      mycpu()->intena = intena;
+    }
+  }
+}
+
+// Round-robin scheduler.
+// The same variable is used by all CPUs to determine the starting index.
+// It is protected by the process table lock, so no additional lock is
+// required.
+static int rrindex;
+
+static struct proc *
+roundrobin()
+{
+  // Loop over process table looking for process to run.
+  for(int i = 0; i < NPROC; i++) {
+    struct proc *p = &ptable.proc[(i + rrindex + 1) % NPROC];
+    if(p->state != RUNNABLE)
+      continue;
+    rrindex = p - ptable.proc;
+    return p;
+  }
+  return 0;
+}
+
+// Called from timer interrupt to reschedule the CPU.
+void
+reschedule(void)
+{
+  struct cpu *c = mycpu();
+
+  //cprintf("reschedule cpu %d\n", cpuid());
+  acquire(&ptable.lock);
+  if(c->proc) {
+    if(c->proc->state != RUNNING)
+      panic("current process not in running state");
+    c->proc->state = RUNNABLE;
+  }
+  sched();
+  // NOTE: there is a race here.  We need to release the process
+  // table lock before idling the CPU, but as soon as we do, it
+  // is possible that an interrupt or an event on another CPU could
+  // cause a process to become ready to run.  The undesirable
+  // (but non-catastrophic) consequence of such an occurrence is that
+  // this CPU will idle until the next timer interrupt, when in fact
+  // it could have been doing useful work.
+  release(&ptable.lock);
 }
 
 // Give up the CPU for one scheduling round.
