@@ -105,5 +105,4 @@ clean:
 	cd $(KERNEL); make clean
 	cd $(USER); make clean
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-	*.o *.d *.asm *.sym xv6.img .gdbinit \
-	GSYMS GRTAGS GTAGS GPATH
+	*.o *.d *.asm *.sym xv6.img .gdbinit
