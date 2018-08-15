@@ -12,8 +12,9 @@ pad()
 
 # create formatted (numbered) files
 mkdir -p fmt
-rm -f fmt/*
+rm -fr fmt/*
 cp README fmt
+mkdir -p fmt/boot fmt/kernel fmt/user
 files=`grep -v '^#' runoff.list | awk '{print $1}'`
 n=99
 for i in $files
