@@ -77,8 +77,6 @@ idestart(struct buf *b)
     panic("idestart");
   if(b->blockno >= FSSIZE)
     panic("incorrect blockno");
-  //cprintf("idestart (%s blk %d, ticks=%d)\n",
-  //        b->flags & B_DIRTY ? "wrt" : "rd", b->blockno, ticks);
   int sector_per_block =  BSIZE/SECTOR_SIZE;
   int sector = b->blockno * sector_per_block;
   int read_cmd = (sector_per_block == 1) ? IDE_CMD_READ :  IDE_CMD_RDMUL;
@@ -107,7 +105,6 @@ ideintr(void)
 {
   struct buf *b;
 
-  //cprintf("ideintr (ticks=%d)\n", ticks);
   // First queued buffer is the active request.
   acquire(&idelock);
 

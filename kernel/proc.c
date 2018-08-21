@@ -328,9 +328,6 @@ idle(void)
   for(;;) {
     if(!(readeflags()&FL_IF))
       panic("idle non-interruptible");
-    pushcli();
-    //cprintf("cpu %d idling\n", cpuid());
-    popcli();
     hlt(); // Wait for an interrupt
   }
 }
@@ -370,12 +367,10 @@ sched(void)
 
   // Determine the current context, which is what we are switching from.
   if(c->proc) {
-    //cprintf("sched(cpu %d): from proc %d\n", cpuid(), c->proc->pid);
     if(c->proc->state == RUNNING)
       panic("sched running");
     oldcontext = &c->proc->context;
   } else {
-    //cprintf("sched(cpu %d): from idle\n", cpuid());
     oldcontext = &(c->scheduler);
   }
 
@@ -387,7 +382,6 @@ sched(void)
     p->state = RUNNING;
     switchuvm(p);
     if(c->proc != p) {
-      //cprintf("sched(cpu %d): switch to process %d\n", cpuid(), c->proc->pid);
       c->proc = p;
       intena = c->intena;
       swtch(oldcontext, p->context);
@@ -395,10 +389,8 @@ sched(void)
     }
   } else {
     // No process to run -- switch to the idle loop.
-    //cprintf("sched(cpu %d): no process\n", cpuid());
     switchkvm();
     if(oldcontext != &(c->scheduler)) {
-      //cprintf("sched(cpu %d): idling\n", cpuid());
       c->proc = 0;
       intena = c->intena;
       swtch(oldcontext, c->scheduler);
@@ -433,7 +425,6 @@ reschedule(void)
 {
   struct cpu *c = mycpu();
 
-  //cprintf("reschedule cpu %d\n", cpuid());
   acquire(&ptable.lock);
   if(c->proc) {
     if(c->proc->state != RUNNING)

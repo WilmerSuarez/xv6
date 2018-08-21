@@ -46,7 +46,6 @@ trap(struct trapframe *tf)
     return;
   }
 
-  //cprintf("trap %d(cpu %d)\n", tf->trapno, cpuid());
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
