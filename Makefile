@@ -4,27 +4,22 @@ BOOT = boot
 KERNEL = kernel
 USER = user
 
-xv6.img: $(BOOT)/bootblock $(KERNEL)/kernel $(USER)/fs.img
+xv6.img: subdirs
 	dd if=/dev/zero of=xv6.img count=10000
 	dd if=$(BOOT)/bootblock of=xv6.img conv=notrunc
 	dd if=$(KERNEL)/kernel of=xv6.img seek=1 conv=notrunc
 
-xv6memfs.img: $(BOOT)/bootblock $(KERNEL)/kernelmemfs
+xv6memfs.img: subdirs
 	dd if=/dev/zero of=xv6memfs.img count=10000
 	dd if=$(BOOT)/bootblock of=xv6memfs.img conv=notrunc
 	dd if=$(KERNEL)/kernelmemfs of=xv6memfs.img seek=1 conv=notrunc
 
-$(BOOT)/bootblock:
-	cd $(BOOT); $(MAKE) bootblock
-
-$(KERNEL)/kernel:
-	cd $(KERNEL); $(MAKE) kernel
-
-$(KERNEL)/kernelmemfs:
-	cd $(KERNEL); $(MAKE) kernelmemfs
-
-$(USER)/fs.img:
-	cd $(USER); $(MAKE) fs.img
+.PHONY: subdirs
+subdirs:
+	cd $(BOOT) && $(MAKE) bootblock
+	cd $(KERNEL) && $(MAKE) kernel
+	cd $(KERNEL) && $(MAKE) kernelmemfs
+	cd $(USER) && $(MAKE) fs.img
 
 # make a printout
 FILES = $(shell grep -v '^\#' runoff.list)
@@ -98,7 +93,7 @@ gtags:
 	gtags
 
 tags:
-	cd $(KERNEL); make tags
+	cd $(KERNEL) && make tags
 
 clean: 
 	cd $(BOOT); make clean
@@ -106,3 +101,5 @@ clean:
 	cd $(USER); make clean
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*.o *.d *.asm *.sym xv6.img .gdbinit
+
+-include *.d

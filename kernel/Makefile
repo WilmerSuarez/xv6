@@ -28,7 +28,7 @@ OBJS = \
 	trap.o\
 	uart.o\
 	vectors.o\
-	vm.o\
+	vm.o
 
 kernel: $(OBJS) entry.o entryother initcode kernel.ld
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(OBJS) -b binary initcode entryother
@@ -42,7 +42,9 @@ kernel: $(OBJS) entry.o entryother initcode kernel.ld
 # great for testing the kernel on real hardware without
 # needing a scratch disk.
 MEMFSOBJS = $(filter-out ide.o,$(OBJS)) memide.o
-kernelmemfs: $(MEMFSOBJS) entry.o entryother initcode kernel.ld fs.img
+kernelmemfs: $(MEMFSOBJS) entry.o entryother initcode kernel.ld
+	# This is ugly, but it's the best I can think of right now (EWS).
+	cd ../user && $(MAKE) fs.img && cp -p fs.img ../kernel
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernelmemfs entry.o  $(MEMFSOBJS) -b binary initcode entryother fs.img
 	$(OBJDUMP) -S kernelmemfs > kernelmemfs.asm
 	$(OBJDUMP) -t kernelmemfs | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > kernelmemfs.sym
@@ -68,3 +70,5 @@ vectors.S: vectors.pl
 clean: 
 	rm -f *.o *.d *.asm *.sym vectors.S entryother \
 	initcode initcode.out kernel kernelmemfs 
+
+-include *.d

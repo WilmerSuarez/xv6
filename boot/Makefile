@@ -13,4 +13,4 @@ bootblock: bootasm.S bootmain.c
 clean: 
 	rm -f *.o *.d *.asm *.sym bootblock
 
-
+-include *.d

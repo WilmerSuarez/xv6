@@ -54,3 +54,5 @@ _forktest: forktest.o $(ULIB)
 clean: 
 	rm -f *.o *.d *.asm *.sym fs.img mkfs README \
 	$(UPROGS)
+
+-include *.d
