@@ -69,6 +69,6 @@ vectors.S: vectors.pl
 
 clean: 
 	rm -f *.o *.d *.asm *.sym vectors.S entryother \
-	initcode initcode.out kernel kernelmemfs 
+	initcode initcode.out kernel kernelmemfs fs.img
 
 -include *.d
