@@ -1,1 +1,1 @@
-# Introduction to xv6 #
+# CSE 306 #
