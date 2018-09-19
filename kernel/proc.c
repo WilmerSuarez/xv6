@@ -366,11 +366,14 @@ sched(void)
     panic("sched interruptible");
 
   // Determine the current context, which is what we are switching from.
-  if(c->proc) {
+  // c->proc is NULL if CPU is idle. Pointer to process struct otherwise.
+  if(c->proc) { 
+    // If there is a process currently running on this CPU
     if(c->proc->state == RUNNING)
       panic("sched running");
     oldcontext = &c->proc->context;
-  } else {
+  } else { 
+    // If CPU is idle
     oldcontext = &(c->scheduler);
   }
 
@@ -381,7 +384,9 @@ sched(void)
     // before jumping back to us.
     p->state = RUNNING;
     switchuvm(p);
-    if(c->proc != p) {
+    if(c->proc != p) { 
+      // If selected process is different from the one 
+      // currently being run on this CPU
       c->proc = p;
       intena = c->intena;
       swtch(oldcontext, p->context);
@@ -594,4 +599,11 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+// Systemcall getdate
+// Get the curret date using cmostime() 
+int getdate(struct rtcdate *r) {
+  cmostime(r);
+  return 0;
 }

@@ -51,7 +51,7 @@ trap(struct trapframe *tf)
     if(cpuid() == 0){
       acquire(&tickslock);
       ticks++;
-      wakeup(&ticks);
+      wakeup(&ticks); // Notify any processes that are sleeping waiting for the value of ticks to change
       release(&tickslock);
     }
     lapiceoi();
@@ -97,6 +97,8 @@ trap(struct trapframe *tf)
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running
   // until it gets to the regular system call return.)
+  if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
+    exit();
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 

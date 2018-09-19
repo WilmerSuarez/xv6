@@ -103,6 +103,7 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_getdate(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,6 +127,7 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_getdate] sys_getdate, 
 };
 
 void
@@ -134,7 +136,12 @@ syscall(void)
   int num;
   struct proc *curproc = myproc();
 
-  num = curproc->tf->eax;
+  // DEBUGGING - print process ID of the process making the system call
+//  cprintf("PID: %d\n", curproc->pid); 
+  // DEBUGGING - print integer code identifying the requested system call
+  //cprintf("SYSCALL_ID: %d\n", curproc->tf->eax);
+
+  num = curproc->tf->eax; // Syscall number
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
   } else {
