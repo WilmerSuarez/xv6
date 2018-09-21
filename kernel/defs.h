@@ -74,6 +74,7 @@ void            kbdintr(void);
 
 // lapic.c
 void            cmostime(struct rtcdate *r);
+void            cmostime_write(struct rtcdate *r);
 int             lapicid(void);
 extern volatile uint*    lapic;
 void            lapiceoi(void);
@@ -121,6 +122,9 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             getdate(struct rtcdate *r);
+int             setdate(struct rtcdate *r);
+int             validate_date(struct rtcdate *r);
+int             validate_time(struct rtcdate *r);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

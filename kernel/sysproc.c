@@ -99,3 +99,13 @@ sys_getdate(void) {
 
   return getdate(r);
 }
+
+int 
+sys_setdate(void) {
+  struct rtcdate *r;
+
+  if(argptr(0, (char**)&r, sizeof(r)) < 0)
+    return -1;
+
+  return setdate(r);
+}

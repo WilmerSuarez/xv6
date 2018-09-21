@@ -9,7 +9,7 @@ main(int argc, char *argv[]) {
 
   getdate(&r);
 
-  printf(1, "Time (UTC): %d:%d:%d %d/%d/%d\n", r.hour, r.minute, r.second, r.month, r.day, r.year);
+  printf(1, "Time(UTC): %d:%d:%d %d/%d/%d\n", r.hour, r.minute, r.second, r.month, r.day, r.year);
 
   exit();
 }

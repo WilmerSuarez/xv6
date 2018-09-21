@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "date.h"
 
 struct {
   struct spinlock lock;
@@ -601,9 +602,59 @@ procdump(void)
   }
 }
 
-// Systemcall getdate
+// System call - getdate
 // Get the curret date using cmostime() 
-int getdate(struct rtcdate *r) {
+int 
+getdate(struct rtcdate *r) {
   cmostime(r);
   return 0;
+}
+
+// System call - setdate
+// Write date to RTC registers.
+int
+setdate(struct rtcdate *r) {
+  if(validate_date(r) >= 0 && validate_time(r) >= 0){
+    cmostime_write(r);
+  } else {
+    return -1;
+  }
+
+  return 0;
+}
+
+int validate_date(struct rtcdate *r) {
+// Validate year
+  if(r->year >= 2000 && r->year <= 2099) {
+    // Validate month
+    if(r->month >= 1 && r->month <= 12) {
+      // Validate days
+      if((r->day >= 1 && r->day <= 31) && (r->month == 1 || r->month == 3 || r->month == 5 || r->month == 7 || r->month == 8 || r->month == 10 || r->month == 12)) {
+        return 0;
+      } else if((r->day >= 1 && r->day <= 30) && (r->month == 4 || r->month == 6 || r->month == 9 || r->month == 11)) {
+        return 0;
+      } else if((r->day >= 1 && r->day <= 28) && (r->month == 2)) {
+        return 0;
+      } else if(r->day == 29 && r->month == 2 && ((r->year%4 == 0 && r->year%100 != 0) || r->year%400 == 0)) {
+        return 0;
+      }
+    }
+  }
+
+  return -1;
+}
+
+int validate_time(struct rtcdate *r) {
+  // Validate seconds
+  if(r->second >= 0 && r->second < 60) {
+    // Validate minutes
+    if(r->minute >= 0 && r->minute < 60) {
+      // Validate hours 
+      if(r->hour >= 0 && r->hour < 24) {
+        return 0;
+      }
+    }
+  }
+  
+  return -1;
 }

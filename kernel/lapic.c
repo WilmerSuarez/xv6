@@ -179,6 +179,12 @@ static uint cmos_read(uint reg)
   return inb(CMOS_RETURN);
 }
 
+static void cmos_write(uint reg, uint data) {
+  outb(CMOS_PORT, 0x80 | reg);  // Select passed in register and disable NMI
+  microdelay(200);
+  outb(CMOS_RETURN, data); // Write to selected register
+}
+
 static void fill_rtcdate(struct rtcdate *r)
 {
   r->second = cmos_read(SECS);
@@ -223,4 +229,30 @@ void cmostime(struct rtcdate *r)
 
   *r = t1;
   r->year += 2000;
+}
+
+void cmostime_write(struct rtcdate *r) {
+// Convert date and time to bcd
+r->year -= 2000;
+#define    CONV(x)     (r->x = ((r->x / 10) << 4) + (r->x % 10))
+    CONV(second);
+    CONV(minute);
+    CONV(hour  );
+    CONV(day   );
+    CONV(month );
+    CONV(year  );
+#undef     CONV
+
+  // Disable interrupts
+  pushcli();
+
+  // Update cmos date & time registers
+  cmos_write(HOURS, r->hour);
+  cmos_write(MINS, r->minute);
+  cmos_write(SECS, r->second);
+  cmos_write(MONTH, r->month);
+  cmos_write(DAY, r->day);
+  cmos_write(YEAR, r->year);
+
+  popcli();
 }
