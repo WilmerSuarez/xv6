@@ -11,5 +11,5 @@ main(int argc, char *argv[]) {
 
   printf(1, "Time(UTC): %d:%d:%d %d/%d/%d\n", r.hour, r.minute, r.second, r.month, r.day, r.year);
 
-  exit();
+  exit(0);
 }

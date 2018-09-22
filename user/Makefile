@@ -24,6 +24,7 @@ UPROGS=\
 	_zombie\
 	_gd\
 	_sd\
+	_exit_wait_test\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

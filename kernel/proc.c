@@ -228,11 +228,15 @@ fork(void)
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
 void
-exit(void)
+exit(int estatus)
 {
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
+
+  estatus = estatus & 0x7FFF; // Mask out the sign bit (32nd bit (MSB))
+
+  curproc->exit_status = estatus;
 
   if(curproc == initproc)
     panic("init exiting");
@@ -252,7 +256,7 @@ exit(void)
 
   acquire(&ptable.lock);
 
-  // Parent might be sleeping in wait().
+  // Parent might be sleeping in wait() (waiting for child to finish (exit())).
   wakeup1(curproc->parent);
 
   // Pass abandoned children to init.
@@ -273,12 +277,12 @@ exit(void)
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(void)
+wait(int *estatus)
 {
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -288,7 +292,14 @@ wait(void)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE){
-        // Found one.
+        // Found child process. Clean up & release resources (free memory)
+        if(estatus) {
+          if(p->killed) {
+            *estatus = -1;
+          } else {
+            *estatus = p->exit_status;
+          }
+        }
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -306,6 +317,10 @@ wait(void)
     // No point waiting if we don't have any children.
     if(!havekids || curproc->killed){
       release(&ptable.lock);
+      if(estatus) {
+        curproc->exit_status = -1;
+        *estatus = -1;
+      }
       return -1;
     }
 
@@ -554,6 +569,7 @@ kill(int pid)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->killed = 1;
+      p->exit_status = -1;
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING)
         p->state = RUNNABLE;

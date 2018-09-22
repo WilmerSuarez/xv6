@@ -16,14 +16,18 @@ sys_fork(void)
 int
 sys_exit(void)
 {
-  exit();
+  int estatus;
+  argint(0, &estatus);
+  exit(estatus);
   return 0;  // not reached
 }
 
 int
 sys_wait(void)
 {
-  return wait();
+  int *estatus;
+  argptr(0, (char **) &estatus, sizeof(estatus));
+  return wait(estatus);
 }
 
 int
@@ -94,7 +98,7 @@ int
 sys_getdate(void) {
   struct rtcdate *r;
 
-  if(argptr(0, (char**)&r, sizeof(r)) < 0) 
+  if(argptr(0, (char **) &r, sizeof(r)) < 0) 
     return -1;
 
   return getdate(r);
@@ -104,7 +108,7 @@ int
 sys_setdate(void) {
   struct rtcdate *r;
 
-  if(argptr(0, (char**)&r, sizeof(r)) < 0)
+  if(argptr(0, (char **) &r, sizeof(r)) < 0)
     return -1;
 
   return setdate(r);

@@ -52,6 +52,7 @@ struct backcmd {
 int fork1(void);  // Fork but panics on failure.
 void panic(char*);
 struct cmd *parsecmd(char*);
+int estatus; // Exit status variable
 
 // Execute cmd.  Never returns.
 void
@@ -65,7 +66,7 @@ runcmd(struct cmd *cmd)
   struct redircmd *rcmd;
 
   if(cmd == 0)
-    exit();
+    exit(1);
 
   switch(cmd->type){
   default:
@@ -74,7 +75,7 @@ runcmd(struct cmd *cmd)
   case EXEC:
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
-      exit();
+      exit(0);
     exec(ecmd->argv[0], ecmd->argv);
     printf(2, "exec %s failed\n", ecmd->argv[0]);
     break;
@@ -84,7 +85,7 @@ runcmd(struct cmd *cmd)
     close(rcmd->fd);
     if(open(rcmd->file, rcmd->mode) < 0){
       printf(2, "open %s failed\n", rcmd->file);
-      exit();
+      exit(1);
     }
     runcmd(rcmd->cmd);
     break;
@@ -93,7 +94,22 @@ runcmd(struct cmd *cmd)
     lcmd = (struct listcmd*)cmd;
     if(fork1() == 0)
       runcmd(lcmd->left);
-    wait();
+    wait(&estatus);
+    if(estatus == -1) {
+      printf(1, "Killed\n");
+    } else if(estatus > 0) {
+      printf(1, "Exit: %d\n", estatus);
+    }
+    if(estatus == -1) {
+      printf(1, "Killed");
+    } else if(estatus > 0) {
+      printf(1, "Exit: %d", estatus);
+    }
+    if(estatus == -1) {
+      printf(2, "Killed");
+    } else if(estatus > 0) {
+      printf(2, "Exit: %d", estatus);
+    }
     runcmd(lcmd->right);
     break;
 
@@ -117,8 +133,18 @@ runcmd(struct cmd *cmd)
     }
     close(p[0]);
     close(p[1]);
-    wait();
-    wait();
+    wait(&estatus);
+    if(estatus == -1) {
+      printf(1, "Killed\n");
+    } else if(estatus > 0) {
+      printf(1, "Exit: %d\n", estatus);
+    }
+    wait(&estatus);
+    if(estatus == -1) {
+      printf(1, "Killed\n");
+    } else if(estatus > 0) {
+      printf(1, "Exit: %d\n", estatus);
+    }
     break;
 
   case BACK:
@@ -127,7 +153,7 @@ runcmd(struct cmd *cmd)
       runcmd(bcmd->cmd);
     break;
   }
-  exit();
+  exit(0);
 }
 
 int
@@ -166,16 +192,21 @@ main(void)
     }
     if(fork1() == 0)
       runcmd(parsecmd(buf));
-    wait();
+    wait(&estatus);
+    if(estatus == -1) {
+      printf(1, "Killed\n");
+    } else if(estatus > 0) {
+      printf(1, "Exit: %d\n", estatus);
+    }
   }
-  exit();
+  exit(0);
 }
 
 void
 panic(char *s)
 {
   printf(2, "%s\n", s);
-  exit();
+  exit(1);
 }
 
 int

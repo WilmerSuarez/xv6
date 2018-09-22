@@ -1,31 +1,44 @@
+
 # Introduction to xv6
 
-Added two systemcalls:
+Three features were added to the operating system.
 
-'''
-getdate: 
-setdate: 
-'''
+
+**getdate system-call:** 
+```
+Read CMOS Real-Time-Clock registers.
+```
+**setdate system-call:**
+```
+Program CMOS Real-Time-Clock registers.
+```
+The system calls 
+
+**Exit status:**
+
+```
+Implement process exit status support.
+```
 
 ## Running the tests
 
-Explain how to run the automated tests for this system
+**getdate system-call:**
+The test for the getdate system-call simply reads the current cmos rtc registers and sends the values to standard output. 
+The time is presented in UTC (Coordinated Universal Time).
+The program is called **gd**. 
 
+**Example:**
+![alt text](imgs/gd.png "Get Date Test")
 
-    How does the xv6 kernel determine which system call was requested?
+**setdate system-call:**
+The test for the setdate system-call writes a correct value tot he cmos rtc registers when no arguments are passed to the program, and then uses the getdate system-call to read the register values and print them. When any argument is passed to the program, a wrong date and time is sent to modify the cmos rtc registers (it fails) an exit code 1.
 
-    How is control dispatched to the kernel code that implements the requested system call?
+**Example:**
+![alt text](imgs/sd_1.png "Set Date Test")
+![alt text](imgs/sd_2.png "Set Date Test")
 
-    How does the xv6 kernel obtain the arguments to the system call?
+**Exit status - Process killed**
+The exit status is tested and checked by the setdate system-call shown above. It is also tested to see if a process has been killed. If a process is killed the exit status is -1 and the sh command prints the word "Killed".
 
-    How are system call results returned to the user process?
-    
-    An overview of what you did for that assignment, designed to guide us in looking at your code and evaluating its output.
-
-    A description of how to compile your code and demonstrate its operation, including how to run any test cases.
-
-    A summary of any assumptions or design decisions you made in implementing your code.
-
-    Any "explanation" or "analysis" you are specifically asked to include with your assignment.
-
-You should consider it your responsibility to demonstrate that your system works properly.  To the extent that your test programs serve this purpose, it would be useful to include them with your submission, together with some text in the README file that explains how to run them and what aspects of your program operation they demonstrate.
+**Example**
+![alt text](imgs/exit_wait_test.png "Exit/Wait Test")
