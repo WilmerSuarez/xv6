@@ -516,14 +516,14 @@ sleep(void *chan, struct spinlock *lk)
   // (wakeup runs with ptable.lock locked),
   // so it's okay to release lk.
   if(lk != &ptable.lock){  //DOC: sleeplock0
-    acquire(&ptable.lock);  //DOC: sleeplock1
+    acquire(&ptable.lock);  //DOC: sleeplock1 // wakeup() race impossible with ptable.lock held
     release(lk);
   }
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
 
-  sched();
+  sched(); // Returns with ptable.lock held
 
   // Tidy up.
   p->chan = 0;

@@ -104,14 +104,16 @@ void
 ideintr(void)
 {
   struct buf *b;
-
+  
   // First queued buffer is the active request.
   acquire(&idelock);
 
+  // If idequeue is empty (no disk access requests)
   if((b = idequeue) == 0){
     release(&idelock);
     return;
   }
+  // Whatever was at the top of the queue has been serviced, so move to next entry in queue
   idequeue = b->qnext;
 
   // Read data if needed.
@@ -121,9 +123,10 @@ ideintr(void)
   // Wake process waiting for this buf.
   b->flags |= B_VALID;
   b->flags &= ~B_DIRTY;
-  wakeup(b);
+  sem_V(&b->sem);
 
   // Start disk on next buf in queue.
+  // If idequeue is not empty (more requests to service)
   if(idequeue != 0)
     idestart(idequeue);
 
@@ -135,9 +138,8 @@ ideintr(void)
 // If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
 // Else if B_VALID is not set, read buf from disk, set B_VALID.
 void
-iderw(struct buf *b)
-{
-  struct buf **pp;
+iderw(struct buf *b) {
+  struct buf **pp; 
 
   if(!holdingsleep(&b->lock))
     panic("iderw: buf not locked");
@@ -146,23 +148,27 @@ iderw(struct buf *b)
   if(b->dev != 0 && !havedisk1)
     panic("iderw: ide disk 1 not present");
 
+  // Initialize semaphore
+  sem_init(&b->sem, 0);
+
   acquire(&idelock);  //DOC:acquire-lock
 
   // Append b to idequeue.
   b->qnext = 0;
+  // idequeue is FIFO. Iterate to end of queue and append buf. 
   for(pp=&idequeue; *pp; pp=&(*pp)->qnext)  //DOC:insert-queue
     ;
   *pp = b;
 
-  // Start disk if necessary.
+  // If first request to access disk
+  // If only one buffer in idequeue (first element in queue), execute its request
   if(idequeue == b)
-    idestart(b);
+    idestart(b); 
 
-  // Wait for request to finish.
-  while((b->flags & (B_VALID|B_DIRTY)) != B_VALID){
-    sleep(b, &idelock);
-  }
-
-
+  // If ^ failed... disk already started taking requests from queue. No need to start again.
   release(&idelock);
+  
+  // sem_P will put Processes asking for disk access to sleep until 
+  // request has been fulfilled (B_VALID is set)
+  sem_P(&b->sem);
 }

@@ -1,3 +1,8 @@
+#ifndef DEFS_H
+#define DEFS_H
+
+#include "types.h"
+
 struct buf;
 struct context;
 struct file;
@@ -9,6 +14,7 @@ struct spinlock;
 struct sleeplock;
 struct stat;
 struct superblock;
+struct semaphore;
 
 // bio.c
 void            binit(void);
@@ -191,5 +197,12 @@ void            switchkvm(void);
 int             copyout(pde_t*, uint, void*, uint);
 void            clearpteu(pde_t *pgdir, char *uva);
 
+// semaphore.c
+void            sem_init(struct semaphore*, int);
+void            sem_P(struct semaphore*);
+void            sem_V(struct semaphore*);
+
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))
+
+#endif

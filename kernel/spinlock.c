@@ -35,6 +35,8 @@ acquire(struct spinlock *lk)
   // Tell the C compiler and the processor to not move loads or stores
   // past this point, to ensure that the critical section's memory
   // references happen after the lock is acquired.
+  // The compiler does this to reduce memory accesses, caches will, in general,
+  // cause writes to shared memory to be delayed.
   __sync_synchronize();
 
   // Record info about lock acquisition for debugging.

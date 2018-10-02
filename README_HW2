@@ -1,0 +1,40 @@
+
+# XV6 PROCESSES
+
+## Kernel Semaphores
+
+Add ability to use semaphores in xv6.
+
+Three functions were added
+**sem_init(struct semaphore \*sp, int val);**
+
+ - Initializes a semaphore with the passed in value.
+ 
+**sem_P(struct semaphore \*sp);**
+
+ - Allows processes to access shared resources. Puts the process to sleep if not yet allowed. Processes wait until sem_V calls wakeup() to try again.
+
+**sem_V(struct semaphore \*sp);**
+
+ - Increments the Semaphore value and calls wakeup() to wakeup any processes that are waiting on the current semaphore.
+
+### Kernel Semaphores Tests:
+The semaphore implementation was tested with the IDE Disk Device Driver. The driver and its interrupt handler used sleep() and wakeup() to more efficiently service disk requests. This was replaced with a semaphore. The semaphore is initialized with the value of 0. After the Disk Driver appends the new disk access request to the ide-queue, the semaphore sees that the current semaphore value is 0 and puts the current process to sleep. Once the IDEs ISR is executed, after the request has been serviced, the associated process is awoken to allow it to continue out of the Disk Driver. 
+
+ - ./usertests 
+	 - [x] passed
+***
+## Extensible User Stacks
+
+### Extensible User Stacks Tests:
+ - ./usertests 
+	 - [x] passed
+ 
+***
+## Multiple Shell Sessions
+
+### Multiple Shell Sessions Tests:
+ - ./usertests 
+	 - [x] passed
+ 
+***
