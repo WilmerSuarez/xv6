@@ -581,8 +581,7 @@ fourfiles(void)
 
 // four processes create and delete different files in same directory
 void
-createdelete(void)
-{
+createdelete(void) {
   enum { N = 20 };
   int pid, i, fd, pi;
   char name[32];

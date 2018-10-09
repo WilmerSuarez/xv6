@@ -33,13 +33,13 @@ kinit1(void *vstart, void *vend)
 {
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
-  freerange(vstart, vend);
+  freerange(vstart, vend);  // Add memory to the free list via kfree
 }
 
 void
 kinit2(void *vstart, void *vend)
 {
-  freerange(vstart, vend);
+  freerange(vstart, vend);  // Add memory to the free list via kfree
   kmem.use_lock = 1;
 }
 
@@ -49,7 +49,7 @@ freerange(void *vstart, void *vend)
   char *p;
   p = (char*)PGROUNDUP((uint)vstart);
   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
-    kfree(p);
+    kfree(p);  // Add memory to the free list via kfree
 }
 //PAGEBREAK: 21
 // Free the page of physical memory pointed at by v,
@@ -65,12 +65,15 @@ kfree(char *v)
     panic("kfree");
 
   // Fill with junk to catch dangling refs.
+  // Set every byte in the memory being freed to 1
+  // Will cause code that uses memory after freeing it to
+  // read garbage instead of old valid contents.
   memset(v, 1, PGSIZE);
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
   r = (struct run*)v;
-  r->next = kmem.freelist;
+  r->next = kmem.freelist;  // Ool start of free list
   kmem.freelist = r;
   if(kmem.use_lock)
     release(&kmem.lock);
@@ -78,11 +81,13 @@ kfree(char *v)
 
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
-// Returns 0 if the memory cannot be allocated.
+// Returns 0 if the memory cannot be allocated
 char*
 kalloc(void)
 {
   struct run *r;
+
+// Remove and return the first element in the free list
 
   if(kmem.use_lock)
     acquire(&kmem.lock);

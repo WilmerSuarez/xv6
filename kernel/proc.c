@@ -81,6 +81,7 @@ allocproc(void)
 
   acquire(&ptable.lock);
 
+  // Find unsused process slot in ptable
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
@@ -121,8 +122,7 @@ found:
 //PAGEBREAK: 32
 // Set up first user process.
 void
-userinit(void)
-{
+userinit(void) {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
@@ -159,12 +159,16 @@ userinit(void)
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
 int
-growproc(int n)
-{
+growproc(int n) {
   uint sz;
   struct proc *curproc = myproc();
 
   sz = curproc->sz;
+  // Make sure that heap doesn't collide with the stack
+  if(curproc->stack_sz != 0) {
+    if((sz + n) >= ((KERNBASE - (curproc->stack_sz * PGSIZE)) - PGSIZE)) 
+      return -1;
+  }
   if(n > 0){
     if((sz = allocuvm(curproc->pgdir, sz, sz + n)) == 0)
       return -1;
@@ -181,25 +185,28 @@ growproc(int n)
 // Sets up stack to return as if from system call.
 // Caller must set state of returned proc to RUNNABLE.
 int
-fork(void)
-{
+fork(void) {
   int i, pid;
-  struct proc *np;
+  struct proc *np; // New process 
   struct proc *curproc = myproc();
 
   // Allocate process.
+  // Sets up kernel stack
   if((np = allocproc()) == 0){
     return -1;
   }
 
-  // Copy process state from proc.
-  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0){
+  // Copy process state from curproc.
+  // Copy page directory from the parent process to the child process
+  // If failed, revert previous allocation
+  if((np->pgdir = copyuvm(curproc->pgdir, curproc->sz, curproc->stack_sz)) == 0){
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
     return -1;
   }
-  np->sz = curproc->sz;
+  np->sz = curproc->sz; 
+  np->stack_sz = curproc->stack_sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
@@ -228,13 +235,12 @@ fork(void)
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
 void
-exit(int estatus)
-{
+exit(int estatus) {
   struct proc *curproc = myproc();
   struct proc *p;
   int fd;
 
-  estatus = estatus & 0x7FFF; // Mask out the sign bit (32nd bit (MSB))
+  estatus = estatus & 0x7FFFFFFF; // Mask out the sign bit (32nd bit (MSB))
 
   curproc->exit_status = estatus;
 
@@ -259,7 +265,7 @@ exit(int estatus)
   // Parent might be sleeping in wait() (waiting for child to finish (exit())).
   wakeup1(curproc->parent);
 
-  // Pass abandoned children to init.
+  // Pass abandoned children to init process
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
@@ -296,6 +302,7 @@ wait(int *estatus)
         if(estatus) {
           if(p->killed) {
             *estatus = -1;
+            p->exit_status = -1;
           } else {
             *estatus = p->exit_status;
           }
