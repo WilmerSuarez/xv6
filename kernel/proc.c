@@ -283,8 +283,7 @@ exit(int estatus) {
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
 int
-wait(int *estatus)
-{
+wait(int *estatus) {
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
@@ -506,8 +505,7 @@ forkret(void)
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
 void
-sleep(void *chan, struct spinlock *lk)
-{
+sleep(void *chan, struct spinlock *lk) {
   struct proc *p = myproc();
   
   if(p == 0)

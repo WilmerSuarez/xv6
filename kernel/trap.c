@@ -92,7 +92,12 @@ trap(struct trapframe *tf) {
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_COM1:
-    uartintr();
+  case T_IRQ0 + IRQ_COM2:
+    if(tf->trapno == T_IRQ0 + IRQ_COM1) {
+      uartintr(1);
+    } else {
+      uartintr(2);
+    }
     lapiceoi();
     break;
   case T_IRQ0 + 7:

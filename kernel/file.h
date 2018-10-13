@@ -1,3 +1,10 @@
+#ifndef FILE_H
+#define FILE_H
+
+// Major device numbers - Device Driver
+#define CONSOLE 1
+#define UART 2
+
 struct file {
   enum { FD_NONE, FD_PIPE, FD_INODE } type;
   int ref; // reference count
@@ -28,10 +35,19 @@ struct inode {
 // table mapping major device number to
 // device functions
 struct devsw {
-  int (*read)(struct inode*, char*, int);
-  int (*write)(struct inode*, char*, int);
+  int (*read)(struct inode*, char*, int); // Reads from a device
+  int (*write)(struct inode*, char*, int); // Writes to a device
 };
 
 extern struct devsw devsw[];
 
-#define CONSOLE 1
+// Table that holds device instantiation information
+struct deviceinit {
+  char *name;
+  uint majordn;
+  uint minordn;
+};
+
+extern struct deviceinit deviceinit[NDEV];
+
+#endif // FILE_H

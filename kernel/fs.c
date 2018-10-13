@@ -314,8 +314,7 @@ ilock(struct inode *ip)
 
 // Unlock the given inode.
 void
-iunlock(struct inode *ip)
-{
+iunlock(struct inode *ip) {
   if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
@@ -438,8 +437,7 @@ itrunc(struct inode *ip)
 // Copy stat information from inode.
 // Caller must hold ip->lock.
 void
-stati(struct inode *ip, struct stat *st)
-{
+stati(struct inode *ip, struct stat *st) {
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;
@@ -451,8 +449,7 @@ stati(struct inode *ip, struct stat *st)
 // Read data from inode.
 // Caller must hold ip->lock.
 int
-readi(struct inode *ip, char *dst, uint off, uint n)
-{
+readi(struct inode *ip, char *dst, uint off, uint n) {
   uint tot, m;
   struct buf *bp;
 
@@ -480,8 +477,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 // Write data to inode.
 // Caller must hold ip->lock.
 int
-writei(struct inode *ip, char *src, uint off, uint n)
-{
+writei(struct inode *ip, char *src, uint off, uint n) {
   uint tot, m;
   struct buf *bp;
 

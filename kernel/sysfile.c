@@ -19,8 +19,7 @@
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
 static int
-argfd(int n, int *pfd, struct file **pf)
-{
+argfd(int n, int *pfd, struct file **pf) {
   int fd;
   struct file *f;
 
@@ -38,8 +37,7 @@ argfd(int n, int *pfd, struct file **pf)
 // Allocate a file descriptor for the given file.
 // Takes over file reference from caller on success.
 static int
-fdalloc(struct file *f)
-{
+fdalloc(struct file *f) {
   int fd;
   struct proc *curproc = myproc();
 
@@ -53,8 +51,7 @@ fdalloc(struct file *f)
 }
 
 int
-sys_dup(void)
-{
+sys_dup(void) {
   struct file *f;
   int fd;
 
@@ -67,8 +64,7 @@ sys_dup(void)
 }
 
 int
-sys_read(void)
-{
+sys_read(void) {
   struct file *f;
   int n;
   char *p;
@@ -239,8 +235,7 @@ bad:
 }
 
 static struct inode*
-create(char *path, short type, short major, short minor)
-{
+create(char *path, short type, short major, short minor) {
   uint off;
   struct inode *ip, *dp;
   char name[DIRSIZ];
@@ -284,8 +279,7 @@ create(char *path, short type, short major, short minor)
 }
 
 int
-sys_open(void)
-{
+sys_open(void) {
   char *path;
   int fd, omode;
   struct file *f;
@@ -334,8 +328,7 @@ sys_open(void)
 }
 
 int
-sys_mkdir(void)
-{
+sys_mkdir(void) {
   char *path;
   struct inode *ip;
 
@@ -350,8 +343,7 @@ sys_mkdir(void)
 }
 
 int
-sys_mknod(void)
-{
+sys_mknod(void) {
   struct inode *ip;
   char *path;
   int major, minor;
@@ -370,8 +362,7 @@ sys_mknod(void)
 }
 
 int
-sys_chdir(void)
-{
+sys_chdir(void) {
   char *path;
   struct inode *ip;
   struct proc *curproc = myproc();

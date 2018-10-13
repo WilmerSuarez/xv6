@@ -15,6 +15,7 @@ struct sleeplock;
 struct stat;
 struct superblock;
 struct semaphore;
+struct input;
 
 // bio.c
 void            binit(void);
@@ -178,8 +179,7 @@ extern struct spinlock tickslock;
 
 // uart.c
 void            uartinit(void);
-void            uartintr(void);
-void            uartputc(int);
+void            uartintr(int);
 
 // vm.c
 void            seginit(void);
@@ -202,6 +202,9 @@ void            clearpteu(pde_t *pgdir, char *uva);
 void            sem_init(struct semaphore*, int);
 void            sem_P(struct semaphore*);
 void            sem_V(struct semaphore*);
+
+// ledit.c
+void            ledit(int (*)(void), void (*)(int), int *,  struct input *inp);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

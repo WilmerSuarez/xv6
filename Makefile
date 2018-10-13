@@ -89,6 +89,13 @@ qemu-nox-gdb: xv6.img $(USER)/fs.img .gdbinit
 	@echo "*** Now run 'gdb'." 1>&2
 	$(QEMU) -nographic $(QEMUOPTS) -S $(QEMUGDB)
 
+qemu-telnet: $(USER)/fs.img xv6.img 
+	$(QEMU) -serial telnet:localhost:4444,server,nowait -serial telnet:localhost:4445,server,nowait $(QEMUOPTS)
+
+qemu-telnet-gdb: $(USER)/fs.img xv6.img .gdbinit
+	@echo "*** Now run 'gdb'." 1>&2
+	$(QEMU) -serial telnet:localhost:4444,server,nowait -serial telnet:localhost:4445,server,nowait $(QEMUOPTS) -S $(QEMUGDB)
+
 gtags:
 	gtags
 
