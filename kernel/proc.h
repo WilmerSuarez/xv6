@@ -41,9 +41,12 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   uint stack_sz;               // Size of stack (Number of pages)
+  uint swapped;                // Swapped or Resident flag
+  uint sector;                 // Starting Disk Sector where the process is being stored
+  uint t;                      // Amount of time swapped out
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
+  enum procstate state;        // Process stat
   int pid;                     // Process ID
   int exit_status;             // Process exit status
   struct proc *parent;         // Parent process

@@ -29,8 +29,7 @@ struct superblock sb;
 
 // Read the super block.
 void
-readsb(int dev, struct superblock *sb)
-{
+readsb(int dev, struct superblock *sb) {
   struct buf *bp;
 
   bp = bread(dev, 1);
@@ -54,8 +53,7 @@ bzero(int dev, int bno)
 
 // Allocate a zeroed disk block.
 static uint
-balloc(uint dev)
-{
+balloc(uint dev) {
   int b, bi, m;
   struct buf *bp;
 
@@ -79,8 +77,7 @@ balloc(uint dev)
 
 // Free a disk block.
 static void
-bfree(int dev, uint b)
-{
+bfree(int dev, uint b) {
   struct buf *bp;
   int bi, m;
 

@@ -1,7 +1,6 @@
 // Console input and output.
 // Input is from the keyboard or serial port.
 // Output is written to the screen and serial port.
-
 #include "types.h"
 #include "defs.h"
 #include "param.h"
@@ -171,10 +170,41 @@ cgaputc(int c) {
 // Calls consputc() (handles character output)
 void
 consoleintr(int (*getc)(void)) {
-  int doprocdump = 0;
+  int c, doprocdump = 0;
   
   acquire(&cons.lock);
-  ledit(getc, cgaputc, &doprocdump, &input_con);
+  while((c = getc()) >= 0){
+    switch(c){
+    case C('P'):  // Process listing.
+      // procdump() locks cons.lock indirectly; invoke later
+      doprocdump = 1;
+      break;
+    case C('U'):  // Kill line.
+      while(input_con.e != input_con.w &&
+            input_con.buf[(input_con.e-1) % INPUT_BUF] != '\n') {
+        input_con.e--;
+        cgaputc(BACKSPACE);
+      }
+      break;
+    case C('H'): case '\x7f':  // Backspace
+      if(input_con.e != input_con.w){
+        input_con.e--;
+        cgaputc(BACKSPACE);
+      }
+      break;
+    default:
+      if(c != 0 && input_con.e-input_con.r < INPUT_BUF){
+        c = (c == '\r') ? '\n' : c;
+        input_con.buf[input_con.e++ % INPUT_BUF] = c;
+        cgaputc(c);
+        if(c == '\n' || c == C('D') || input_con.e == input_con.r+INPUT_BUF){
+          input_con.w = input_con.e;
+          wakeup(&input_con.r);
+        }
+      }
+      break;
+    }
+  }
   release(&cons.lock);
   if(doprocdump) {
     procdump();  // now call procdump() wo. cons.lock held

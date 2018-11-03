@@ -19,7 +19,7 @@ void sem_init(struct semaphore *sp, int val) {
 */
 void sem_P(struct semaphore *sp) {
     acquire(&sp->semlock);
-    if(sp->val <= 0)
+    while(sp->val <= 0)
         sleep(sp, &sp->semlock);
     sp->val -= 1;
     release(&sp->semlock);

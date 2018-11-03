@@ -22,7 +22,7 @@ fetchint(uint addr, int *ip) {
   if((addr >= stack_bottom && addr+4 <= (KERNBASE - 1))) {
     *ip = *(int*)(addr);
     return 0;
-  } else if(addr >= curproc->sz || addr+4 > curproc->sz){
+  } else if(addr >= curproc->sz || addr+4 > curproc->sz || addr > KERNBASE){
     return -1;
   }
 
@@ -46,7 +46,7 @@ fetchstr(uint addr, char **pp) {
       if(*s == 0)
         return s - *pp;
     return -1;
-  } else if(addr >= curproc->sz){
+  } else if(addr >= curproc->sz || addr > KERNBASE){
     return -1;
   }
   
@@ -78,7 +78,7 @@ argptr(int n, char **pp, int size) {
   if((uint)i >= stack_bottom && ((uint)i + size) <= (KERNBASE - 1)) {
     *pp = (char*)i;
     return 0;
-  } else if(size < 0 || (uint)i >= curproc->sz || ((uint)i + size) > curproc->sz) {
+  } else if(size < 0 || (uint)i >= curproc->sz || ((uint)i + size) > curproc->sz || ((uint)i + size) > KERNBASE) {
     return -1;
   }
  

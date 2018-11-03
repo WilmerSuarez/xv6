@@ -29,23 +29,20 @@ struct {
 // 2. main() calls kinit2() with the rest of the physical pages
 // after installing a full page table that maps them on all cores.
 void
-kinit1(void *vstart, void *vend)
-{
+kinit1(void *vstart, void *vend) {
   initlock(&kmem.lock, "kmem");
   kmem.use_lock = 0;
   freerange(vstart, vend);  // Add memory to the free list via kfree
 }
 
 void
-kinit2(void *vstart, void *vend)
-{
+kinit2(void *vstart, void *vend) {
   freerange(vstart, vend);  // Add memory to the free list via kfree
   kmem.use_lock = 1;
 }
 
 void
-freerange(void *vstart, void *vend)
-{
+freerange(void *vstart, void *vend) {
   char *p;
   p = (char*)PGROUNDUP((uint)vstart);
   for(; p + PGSIZE <= (char*)vend; p += PGSIZE)
@@ -57,8 +54,7 @@ freerange(void *vstart, void *vend)
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
 void
-kfree(char *v)
-{
+kfree(char *v) {
   struct run *r;
 
   if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
@@ -79,23 +75,38 @@ kfree(char *v)
     release(&kmem.lock);
 }
 
-// Allocate one 4096-byte page of physical memory.
+// Allocate one 4096-byte page of physical memory by removing
+// first element in the free list
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated
 char*
-kalloc(void)
-{
+kalloc(void) {
   struct run *r;
-
-// Remove and return the first element in the free list
-
+  
   if(kmem.use_lock)
     acquire(&kmem.lock);
-  r = kmem.freelist;
-  if(r)
-    kmem.freelist = r->next;
+
+  
+  while(!(r = kmem.freelist)) {
+    /* 
+      If no memory currently available, Wakeup swap 
+      daemon & sleep until swap has made memory available 
+    */
+    //cprintf("wake up swap - from kalloc\n");
+    //wakeup(&swapp);
+    //cprintf("Kalloc sleeping\n");
+    //sleep(&swapp, &kmem.lock);
+    //cprintf("Kalloc awake\n");
+    goto done;
+  }
+
+  kmem.freelist = r->next;
+  /* Decrement amount of memory serviced */
+  --mem_amount;
+
+done: 
   if(kmem.use_lock)
     release(&kmem.lock);
+    
   return (char*)r;
 }
-

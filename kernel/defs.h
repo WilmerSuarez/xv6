@@ -132,6 +132,10 @@ int             getdate(struct rtcdate *);
 int             setdate(struct rtcdate *);
 int             validate_date(struct rtcdate *);
 int             validate_time(struct rtcdate *);
+void            kfork(void (*)(void));
+void            daemonsinit(void);
+extern uint     swapp;
+extern uint     mem_amount;
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -204,7 +208,7 @@ void            sem_P(struct semaphore*);
 void            sem_V(struct semaphore*);
 
 // ledit.c
-void            ledit(int (*)(void), void (*)(int), int *,  struct input *inp);
+void            ledit(int (*)(int), void (*)(int, int), int, int *,  struct input *inp);
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

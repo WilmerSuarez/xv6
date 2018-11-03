@@ -36,8 +36,7 @@ ideintr(void)
 // If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
 // Else if B_VALID is not set, read buf from disk, set B_VALID.
 void
-iderw(struct buf *b)
-{
+iderw(struct buf *b) {
   uchar *p;
 
   if(!holdingsleep(&b->lock))

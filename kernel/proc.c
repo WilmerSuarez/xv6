@@ -6,7 +6,13 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "sleeplock.h"
 #include "date.h"
+#include "fs.h"
+#include "buf.h"
+
+uint swapp;
+uint mem_amount = 0;
 
 struct {
   struct spinlock lock;
@@ -22,10 +28,10 @@ extern void trapret(void);
 static void wakeup1(void *chan);
 static void sched(void);
 static struct proc *roundrobin(void);
+struct spinlock swaplock;
 
 void
-pinit(void)
-{
+pinit(void) {
   initlock(&ptable.lock, "ptable");
 }
 
@@ -38,8 +44,7 @@ cpuid() {
 // Must be called with interrupts disabled to avoid the caller being
 // rescheduled between reading lapicid and running through the loop.
 struct cpu*
-mycpu(void)
-{
+mycpu(void) {
   int apicid, i;
   
   if(readeflags()&FL_IF)
@@ -74,8 +79,7 @@ myproc(void) {
 // state required to run in the kernel.
 // Otherwise return 0.
 static struct proc*
-allocproc(void)
-{
+allocproc(void) {
   struct proc *p;
   char *sp;
 
@@ -95,6 +99,8 @@ found:
 
   release(&ptable.lock);
 
+  /* Increment the amount of page allocation needed - used by swap daemon */
+  mem_amount ++;
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -344,8 +350,7 @@ wait(int *estatus) {
 // the scheduler is invoked to switch the CPU from the idle loop to
 // a process context.
 void
-idle(void)
-{
+idle(void) {
   sti(); // Enable interrupts on this processor
   for(;;) {
     if(!(readeflags()&FL_IF))
@@ -373,8 +378,7 @@ idle(void)
 //      via swtch back to the scheduler.
 
 static void
-sched(void)
-{
+sched(void) {
   int intena;
   struct proc *p;
   struct context **oldcontext;
@@ -412,6 +416,8 @@ sched(void)
       c->proc = p;
       intena = c->intena;
       swtch(oldcontext, p->context);
+      // This code is reached when the process that was swapped is chosen
+      // to run again. Might come back on another CPU v
       mycpu()->intena = intena;  // We might return on a different CPU.
     }
   } else {
@@ -433,12 +439,11 @@ sched(void)
 static int rrindex;
 
 static struct proc *
-roundrobin()
-{
+roundrobin() {
   // Loop over process table looking for process to run.
   for(int i = 0; i < NPROC; i++) {
     struct proc *p = &ptable.proc[(i + rrindex + 1) % NPROC];
-    if(p->state != RUNNABLE)
+    if(p->state != RUNNABLE || p->swapped)
       continue;
     rrindex = p - ptable.proc;
     return p;
@@ -448,8 +453,7 @@ roundrobin()
 
 // Called from timer interrupt to reschedule the CPU.
 void
-reschedule(void)
-{
+reschedule(void) {
   struct cpu *c = mycpu();
 
   acquire(&ptable.lock);
@@ -473,8 +477,7 @@ reschedule(void)
 
 // Give up the CPU for one scheduling round.
 void
-yield(void)
-{
+yield(void) {
   acquire(&ptable.lock);  //DOC: yieldlock
   myproc()->state = RUNNABLE;
   sched();
@@ -484,8 +487,7 @@ yield(void)
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
 void
-forkret(void)
-{
+forkret(void) {
   static int first = 1;
   // Still holding ptable.lock from scheduler.
   release(&ptable.lock);
@@ -544,8 +546,7 @@ sleep(void *chan, struct spinlock *lk) {
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
 static void
-wakeup1(void *chan)
-{
+wakeup1(void *chan) {
   struct proc *p;
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
@@ -555,8 +556,7 @@ wakeup1(void *chan)
 
 // Wake up all processes sleeping on chan.
 void
-wakeup(void *chan)
-{
+wakeup(void *chan) {
   acquire(&ptable.lock);
   wakeup1(chan);
   release(&ptable.lock);
@@ -566,8 +566,7 @@ wakeup(void *chan)
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
 int
-kill(int pid)
-{
+kill(int pid) {
   struct proc *p;
 
   acquire(&ptable.lock);
@@ -591,8 +590,7 @@ kill(int pid)
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
 void
-procdump(void)
-{
+procdump(void) {
   static char *states[] = {
   [UNUSED]    "unused",
   [EMBRYO]    "embryo",
@@ -665,7 +663,8 @@ int validate_date(struct rtcdate *r) {
   return -1;
 }
 
-int validate_time(struct rtcdate *r) {
+int 
+validate_time(struct rtcdate *r) {
   // Validate seconds
   if(r->second >= 0 && r->second < 60) {
     // Validate minutes
@@ -679,3 +678,135 @@ int validate_time(struct rtcdate *r) {
   
   return -1;
 }
+
+/*
+  Modified exit function used by a
+  dameon if it returns.
+*/
+void
+daemonexit(void) {
+  struct proc *curproc = myproc();
+  struct proc *p;
+  int fd;
+
+  // Close all open files.
+  for(fd = 0; fd < NOFILE; fd++){
+    if(curproc->ofile[fd]){
+      fileclose(curproc->ofile[fd]);
+      curproc->ofile[fd] = 0;
+    }
+  }
+
+  acquire(&ptable.lock);
+
+  /* Init process might be sleeping in wait() (waiting for its children to exit) */
+  wakeup1(curproc->parent);
+
+  // Pass abandoned children to init process
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->parent == curproc){
+      p->parent = initproc;
+      if(p->state == ZOMBIE)
+        wakeup1(initproc);
+    }
+  }
+
+  // Jump into the scheduler, never to return.
+  curproc->state = ZOMBIE;
+  sched();
+  panic("zombie daemonexit");
+}
+
+/*
+  Used to create "kernel-only" threads. 
+  Allocates a process table entry, kernel stack, and kernel page table.
+  No user address space.
+*/
+void 
+kfork(void (*func)(void)) {
+  struct proc *p;
+  char *sp;
+
+  acquire(&ptable.lock);
+
+  /* Find unsused process slot in ptable */
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    if(p->state == UNUSED)
+      goto found;
+
+  release(&ptable.lock);
+  return;
+
+/* Unsused process table entry found */
+found:
+  p->pid = nextpid++;
+  p->parent = initproc;
+  release(&ptable.lock);
+
+  /* Increment the amount of page allocation needed - used by swap daemon */
+  mem_amount ++;
+  /* Allocate kernel stack */
+  if((p->kstack = kalloc()) == 0){
+    p->state = UNUSED;
+    return;
+  }
+  sp = p->kstack + KSTACKSIZE;
+
+  /* No trapframe required, proess will spend entire lifetime in the kernel */
+  // Leave room for trap frame.
+  sp -= sizeof *p->tf;
+  p->tf = (struct trapframe*)sp;
+
+  // Set up new context to start executing at forkret,
+  // which returns to trapret.
+  sp -= 4;
+  *(uint*)sp = (uint)daemonexit;
+
+  sp -= sizeof *p->context;
+  p->context = (struct context*)sp;
+  memset(p->context, 0, sizeof *p->context);
+  p->context->eip = (uint)func;
+
+  /* Allocate kernel Page Table */
+  if((p->pgdir = setupkvm()) == 0)
+    panic("kfork");
+
+  /* Allow process to be scheduled */
+  acquire(&ptable.lock);
+
+  p->state = RUNNABLE;
+
+  release(&ptable.lock);
+}
+
+/* ---------- DAEMONS ---------- */
+static void 
+ticktock(void) {
+  uint i = 100;
+  uint _ticks;
+
+  /* 
+    Release ptable.lock still being
+    held by scheduler 
+  */
+  release(&ptable.lock);
+
+  for(;;) {
+    acquire(&tickslock);
+    _ticks = ticks;
+    while((ticks - _ticks) < i) {
+      sleep(&ticks, &tickslock);  
+    }
+    cprintf("100 Ticks!\n");
+    release(&tickslock);
+  }
+}
+
+void
+daemonsinit(void) {
+  /* Alerts console every 100 ticks */
+  kfork(ticktock);
+  /* Manages movement of Processes between RAM and Disk */
+ // kfork(swap);
+}
+  

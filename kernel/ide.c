@@ -36,8 +36,7 @@ static void idestart(struct buf*);
 
 // Wait for IDE disk to become ready.
 static int
-idewait(int checkerr)
-{
+idewait(int checkerr) {
   int r;
 
   while(((r = inb(0x1f7)) & (IDE_BSY|IDE_DRDY)) != IDE_DRDY)
@@ -48,8 +47,7 @@ idewait(int checkerr)
 }
 
 void
-ideinit(void)
-{
+ideinit(void) {
   int i;
 
   initlock(&idelock, "ide");
@@ -71,11 +69,18 @@ ideinit(void)
 
 // Start the request for b.  Caller must hold idelock.
 static void
-idestart(struct buf *b)
-{
+idestart(struct buf *b) {
+  uint size;
+  /* Allow access to more than 1000 blocks of device 0 */
+  if(b->dev == ROOTDEV) {
+    size = FSSIZE;
+  } else {
+    size = SDSIZE;
+  }
+
   if(b == 0)
     panic("idestart");
-  if(b->blockno >= FSSIZE)
+  if(b->blockno >= size)
     panic("incorrect blockno");
   int sector_per_block =  BSIZE/SECTOR_SIZE;
   int sector = b->blockno * sector_per_block;
@@ -100,9 +105,9 @@ idestart(struct buf *b)
 }
 
 // Interrupt handler.
+// Invoked whenever the disk driver has completed a request
 void
-ideintr(void)
-{
+ideintr(void) {
   struct buf *b;
   
   // First queued buffer is the active request.
@@ -134,16 +139,18 @@ ideintr(void)
 }
 
 //PAGEBREAK!
-// Sync buf with disk.
-// If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
-// Else if B_VALID is not set, read buf from disk, set B_VALID.
+/* 
+  Sync buf with disk.
+    - If B_DIRTY is set, write buf to disk, clear B_DIRTY, set B_VALID.
+    - Else if B_VALID is not set, read buf from disk, set B_VALID.
+*/
 void
 iderw(struct buf *b) {
   struct buf **pp; 
 
   if(!holdingsleep(&b->lock))
     panic("iderw: buf not locked");
-  if((b->flags & (B_VALID|B_DIRTY)) == B_VALID)
+  if((b->flags & (B_VALID|B_DIRTY)) == B_VALID) // If B_VALID set & B_DIRT NOT SET
     panic("iderw: nothing to do");
   if(b->dev != 0 && !havedisk1)
     panic("iderw: ide disk 1 not present");
@@ -165,7 +172,8 @@ iderw(struct buf *b) {
   if(idequeue == b)
     idestart(b); 
 
-  // If ^ failed... disk already started taking requests from queue. No need to start again.
+  // If ^ failed... idequeue not empty
+  // disk already started taking requests from queue. No need to start again.
   release(&idelock);
   
   // sem_P will put Processes asking for disk access to sleep until 

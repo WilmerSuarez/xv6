@@ -15,8 +15,7 @@ extern char end[]; // first address after kernel loaded from ELF file
 // Allocate a real stack and switch to it, first
 // doing some setup required for memory allocator to work.
 int
-main(void)
-{
+main(void) {
   kinit1(end, P2V(4*1024*1024)); // phys page allocator
   kvmalloc();      // kernel page table
   mpinit();        // detect other processors
@@ -33,14 +32,15 @@ main(void)
   ideinit();       // disk 
   startothers();   // start other processors
   kinit2(P2V(4*1024*1024), P2V(PHYSTOP)); // must come after startothers()
+  /* Kernel all set to start user processes */
   userinit();      // first user process
+  daemonsinit();   // Create the daemon processes (kernel threads)
   mpmain();        // finish this processor's setup
 }
 
 // Other CPUs jump here from entryother.S.
 static void
-mpenter(void)
-{
+mpenter(void) {
   switchkvm();
   seginit();
   lapicinit();
@@ -49,8 +49,7 @@ mpenter(void)
 
 // Common CPU setup code.
 static void
-mpmain(void)
-{
+mpmain(void) {
   cprintf("cpu%d: starting %d\n", cpuid(), cpuid());
   idtinit();       // load idt register
   xchg(&(mycpu()->started), 1); // tell startothers() we're up
@@ -61,8 +60,7 @@ pde_t entrypgdir[];  // For entry.S
 
 // Start the non-boot (AP) processors.
 static void
-startothers(void)
-{
+startothers(void) {
   extern uchar _binary_entryother_start[], _binary_entryother_size[];
   uchar *code;
   struct cpu *c;
@@ -81,6 +79,8 @@ startothers(void)
     // Tell entryother.S what stack to use, where to enter, and what
     // pgdir to use. We cannot use kpgdir yet, because the AP processor
     // is running in low  memory, so we use entrypgdir for the APs too.
+    /* Increment the amount of page allocation needed - used by swap daemon */
+    mem_amount++;
     stack = kalloc();
     *(void**)(code-4) = stack + KSTACKSIZE;
     *(void**)(code-8) = mpenter;
@@ -113,4 +113,3 @@ pde_t entrypgdir[NPDENTRIES] = {
 // Blank page.
 //PAGEBREAK!
 // Blank page.
-

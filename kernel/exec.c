@@ -70,6 +70,8 @@ exec(char *path, char **argv) {
   // Allocate a page of memory for the User Stack 
   // below KERNBASE.
   sp = KERNBASE - PGSIZE;
+  /* Increment the amount of page allocation needed - used by swap daemon */
+  mem_amount++;
   // Allocate one page (4096 Bytes) of physical memory
   if((mem = kalloc()) == 0) { 
     cprintf("Could not allocate initial Stack Page");

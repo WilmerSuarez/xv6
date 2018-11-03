@@ -43,8 +43,7 @@ void iappend(uint inum, void *p, int n);
 
 // convert to intel byte order
 ushort
-xshort(ushort x)
-{
+xshort(ushort x) {
   ushort y;
   uchar *a = (uchar*)&y;
   a[0] = x;
@@ -53,8 +52,7 @@ xshort(ushort x)
 }
 
 uint
-xint(uint x)
-{
+xint(uint x) {
   uint y;
   uchar *a = (uchar*)&y;
   a[0] = x;
@@ -65,8 +63,7 @@ xint(uint x)
 }
 
 int
-main(int argc, char *argv[])
-{
+main(int argc, char *argv[]) {
   int i, cc, fd;
   uint rootino, inum, off;
   struct dirent de;

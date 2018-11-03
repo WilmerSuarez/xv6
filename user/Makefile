@@ -26,6 +26,7 @@ UPROGS=\
 	_sd\
 	_exit_wait_test\
 	_stack_overflow\
+	_recurtest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

@@ -46,23 +46,28 @@ trap(struct trapframe *tf) {
   // Handle Page Fault - Allocate page of memory for the stack.
   if(tf->trapno == T_PGFLT) {
     char *mem;
-    uint addr, size;
+    uint addr, size, npages;
     // Address to bottom of stack
     size = KERNBASE - (myproc()->stack_sz * PGSIZE); 
     // Check if address that caused the fault was below the bottom of the stack
     if(rcr2() < size) {
+      npages = (size - PGROUNDDOWN(rcr2())) / PGSIZE;
+      /* Increment the amount of page allocation needed - used by swap daemon */
+      mem_amount += npages;
       // Size of stack must be less than 4MB.
-      if((myproc()->stack_sz + 1) < STACKMAX) {
+      if((myproc()->stack_sz + npages) < STACKMAX) {
         // Increase stack size
-        myproc()->stack_sz++;
-        // Start address of faulting page
-        addr = PGROUNDDOWN(rcr2()); 
-        // Allocate one page of physical memory
-        mem = kalloc();
-        // Initialize page to 0
-        memset(mem, 0, PGSIZE);
-        // Map the new page to the physical page.
-        mappages(myproc()->pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U);
+        myproc()->stack_sz += npages;
+        for(uint i = 1; i <= npages; ++i) {
+          // Start address of faulting page
+          addr = size - (i * PGSIZE); 
+          // Allocate one page of physical memory
+          mem = kalloc();
+          // Initialize page to 0
+          memset(mem, 0, PGSIZE);
+          // Map the new page to the physical page.
+          mappages(myproc()->pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U);
+        }
         return;
       }
       cprintf("Reached Stack size limit.\n");
@@ -76,6 +81,10 @@ trap(struct trapframe *tf) {
       acquire(&tickslock);
       ticks++;
       wakeup(&ticks); // Notify any processes that are sleeping waiting for the value of ticks to change
+      /* Wakeup swap daemon every 100 ticks */
+      if((ticks % 100) == 0)
+        //cprintf("wake up swap - from trap\n");
+        wakeup(&swapp);
       release(&tickslock);
     }
     lapiceoi();
@@ -92,12 +101,11 @@ trap(struct trapframe *tf) {
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_COM1:
+    uartintr(0);
+    lapiceoi();
+    break;
   case T_IRQ0 + IRQ_COM2:
-    if(tf->trapno == T_IRQ0 + IRQ_COM1) {
-      uartintr(1);
-    } else {
-      uartintr(2);
-    }
+    uartintr(1);
     lapiceoi();
     break;
   case T_IRQ0 + 7:
