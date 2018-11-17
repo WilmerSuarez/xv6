@@ -67,8 +67,7 @@ initlog(int dev)
 
 // Copy committed blocks from log to their home location
 static void
-install_trans(void)
-{
+install_trans(void) {
   int tail;
 
   for (tail = 0; tail < log.lh.n; tail++) {
@@ -83,8 +82,7 @@ install_trans(void)
 
 // Read the log header from disk into the in-memory log header
 static void
-read_head(void)
-{
+read_head(void) {
   struct buf *buf = bread(log.dev, log.start);
   struct logheader *lh = (struct logheader *) (buf->data);
   int i;
@@ -99,8 +97,7 @@ read_head(void)
 // This is the true point at which the
 // current transaction commits.
 static void
-write_head(void)
-{
+write_head(void) {
   struct buf *buf = bread(log.dev, log.start);
   struct logheader *hb = (struct logheader *) (buf->data);
   int i;
@@ -175,8 +172,7 @@ end_op(void)
 
 // Copy modified blocks from cache to log.
 static void
-write_log(void)
-{
+write_log(void) {
   int tail;
 
   for (tail = 0; tail < log.lh.n; tail++) {

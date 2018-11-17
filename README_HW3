@@ -54,3 +54,19 @@ the OS's ticks. A message is displayed to the console everytime
 	 - [x] passed
 
 *********************************************************
+## Swapping
+
+Swapping mechanism is implemented to allow for more
+processes to be created than capable, due to RAM size.
+A swap "daemon" is created that swaps out processes to
+the disk and swaps in processes from the disk at every 100
+ticks on cpu0 or when kalloc() (freelist) runs out of memory.
+
+### Swapping Tests:
+
+Same as before, debugging printouts are made avaialble when 
+
+ - ./usertests 
+	 - [x] passed
+ 
+*********************************************************

@@ -121,6 +121,9 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_getdate(void);
 extern int sys_setdate(void);
+extern int sys_mount(void);
+extern int sys_unmount(void);
+extern int sys_lseek(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -146,6 +149,9 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_getdate] sys_getdate, 
 [SYS_setdate] sys_setdate,
+[SYS_mount]   sys_mount,
+[SYS_unmount] sys_unmount,
+[SYS_lseek]   sys_lseek,
 };
 
 void

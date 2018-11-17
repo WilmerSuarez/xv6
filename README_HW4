@@ -1,0 +1,64 @@
+# Filesystems
+
+## Second IDE Controller
+
+Enabling the use of a second IDE controller to support 2 more disks.
+
+IDE driver was extended to support the other 2 disks. 
+Writes to the controller ports were determined by which device was currently being
+used. 
+
+### Second IDE Controller Tests:
+
+ - ```./usertests``` 
+	 - [x] passed
+
+*********************************************************
+## Disk Device Nodes 
+
+The four disk devices were made to be accessible by user programs. 
+
+This was done by turning them into "files".
+Read and Write functions were implemented that enabled the 
+disks to be read or written using the bread/bwrite functions.
+
+### Disk Device Nodes Tests:
+
+ - ```./test_disk``` 
+ 	 - Writes and reads from disk 2 and 3.
+
+ - ```./df``` 
+	 - Displays the number of free blocks and the 
+       number of free inodes on disk 1.
+
+ - ```./usertests```
+	 - [x] passed
+
+*********************************************************
+## "Native" mkfs
+
+The mkfs program was re-made into a user usable program
+named umfks. The program accepts a disk device node name,
+opens the device and creates an empty filesystem in it with 
+entries '.' and '..'
+
+### "Native" mkfs Tests:
+
+ -  
+
+*********************************************************
+## Mount and Unmount
+
+Mounting and Unmounting functionallity was added.
+A **mount table** was created that holds the inodes of 
+mount points a long with the major and minor device numbers.
+During pathname resolution, the table is searched to test if 
+mounting point is about to searched. If it is, then the inode for the
+mount point is followed. 
+Unmounting removes the mount point from the mount table.
+
+### Mount and Unmount Tests:
+
+ - 
+
+*********************************************************

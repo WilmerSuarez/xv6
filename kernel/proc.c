@@ -802,11 +802,255 @@ ticktock(void) {
   }
 }
 
+/*
+  Used by swaprobin() to remeber the starting index in the ptable 
+  to test for the next process to swap out 
+
+static int procindex; 
+ 
+
+  Round-robin policy used by the swap daemon to determine which is 
+  the next process that should be swapped out to the disk.
+
+static struct proc *
+swaprobin() {
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+   Loop over process table looking for process to swap 
+  for(uint i = 0; i < NPROC; i++) {
+    struct proc *p = &ptable.proc[(i + procindex + 1) % NPROC];
+     Make sure the current process or a process already swapped doesn't get swapped-out 
+    if(p == curproc || p->swapped)  
+      continue;
+    procindex = p - ptable.proc; 
+    p->swapped = 1; // Process will be swapped 
+    p->t = 0;  // Time the process has spent swapped-out
+    return p;
+    release(&ptable.lock);
+  }
+  release(&ptable.lock);
+  return 0;
+}
+
+ 
+  Find a process to swap back into RAM 
+
+static struct proc *
+swap_in() {
+  struct proc *p;
+   Traverse the proctable for the process that has been swapped-out for the longest time 
+  acquire(&ptable.lock);
+    p = &ptable.proc[0];
+  for(uint i = 1; i < NPROC; i++) {
+    if(ptable.proc[i].t > p->t) {
+      p = &ptable.proc[i];
+    }
+  }
+  if(p->t && p->swapped) {
+    release(&ptable.lock);
+    return p;
+  } 
+  release(&ptable.lock);
+  return 0;
+}
+
+ 
+  Used by swap daemon to get the PTEs of the process
+  being swapped-out
+
+static pte_t *
+walkswap(pde_t *pgdir, const void *va) {
+  pde_t *pde;
+  pte_t *pgtab;
+
+  pde = &pgdir[PDX(va)];
+  if(*pde & PTE_P){
+     Get address of Page Table pointed to by top 20 bits of PDE 
+    pgtab = (pte_t*)P2V(PTE_ADDR(*pde)); 
+  }
+   Get address of Page Table Entry in Page Table 
+  return &pgtab[PTX(va)]; 
+}
+
+
+ Bitmap modification and access Macros 
+#define SETBIT(MAP, INDEX)    (MAP[(INDEX/8)] |= (1<<(INDEX%8)))
+#define CLEARBIT(MAP, INDEX)  (MAP[(INDEX/8)] &= ~(1<<(INDEX%8)))
+#define GETBIT(MAP, INDEX)    (MAP[(INDEX/8)] & (1<<(INDEX%8)))
+*/
+//static void
+//swap(void) {
+  //const uint devno = 0;
+  /* Stores the byte-size goal the swap daemon needs to free */ 
+  //uint freesz;
+  /* Process getting swapped-in */
+  //struct proc *inproc;
+  /* Process getting swapped-out */
+  //struct proc *outproc;
+  /* Bitmap used to implement a first fit policy for the disk sectors */
+  //uchar disk_bitmap[1250] = { 0 };
+  /* Store amount of disk space required for process (number of blocks/disk sectors) */
+  //uint dspace = 0;
+  /* Used to store the number of consecutive sectors */
+  //uint sectors = 0;
+  /* Buffer for R/W disk */
+  //struct buf *procbuf;
+  /* Holds index of first empty position in bitmap */
+  //uint index = 0;
+  /* Holds address space PTEs for processes being swapped-out */
+  //pte_t *pte;
+  /* Holds address of Kernel Virtual Address */
+  //char * addr;
+  //uchar data[512] = { 0 };
+  
+  /* 
+    Release ptable.lock still being
+    held by scheduler 
+  *//*
+  release(&ptable.lock);
+
+  for(;;) {
+    acquire(&swaplock);
+  
+      Awoken when 100 ticks have passed on cpu0 or 
+      when kalloc runs out of memory to allocate 
+    
+    sleep(&swapp, &swaplock);  
+    //cprintf("Swap awake!\n");
+    release(&swaplock);
+
+     Increment the amount of time swapped process have been in the disk 
+    //incrtime();
+
+     Find process to swap-in 
+    inproc = swap_in();
+
+     
+        Target amount of bytes to free = 
+        Size of inproc process memory + Size of its Stack + Size of its Page Table  
+        + Size of memory needed by kalloc (mem_amount) (if any) 
+    
+    if(inproc)
+      freesz = inproc->sz + (inproc->stack_sz * PGSIZE) + PGSIZE;
+    if(mem_amount)
+      freesz += (mem_amount * PGSIZE);
+     
+      If no swapped process is found and if no memory needs to
+      be freed for kalloc, then no swapping occurs.
+    
+    if(!inproc && !mem_amount)
+      goto do_nothing;
+
+    Select process to be swapped out - using round robin policy 
+    while((outproc = swaprobin()) != 0) {
+       Caluclate amount of disk space (number of blocks) needed to hold the process 
+       ((Size of usercode + data + stack + kernel stack) / PGSIZE) * 8 
+      dspace = ((outproc->sz + (outproc->stack_sz * PGSIZE) + PGSIZE) / PGSIZE) * 8;
+
+       Traverse the Disk Bitmap to find enough unsused consecutive sectors on the disk 
+      for(index; index < SDSIZE; ++index) {
+        if(GETBIT(disk_bitmap, index)) {
+           Block is in use 
+           Reset the number of consecutive sectors 
+          sectors = 0;
+        } else {
+           Block is not in use 
+           Increment the number of consecutive sectors 
+          sectors++;
+           If enough sectors found, set beginning sector of process being swapped-out 
+          if(sectors == dspace) {
+            outproc->sector = index - dspace + 1;
+             Set sectors as allocated 
+            for(unsigned a = outproc->sector; a < dspace; ++a)
+              SETBIT(disk_bitmap, a);
+            break;
+          }
+        }
+      }
+
+      uint sect = outproc->sector;
+       Store user code, data, and heap in disk 
+      for(uint i = 0; 
+      (i < outproc->sz) && (sect < ((outproc->sz / PGSIZE) * 8)); 
+      i+=PGSIZE, sect+=8) {
+         Get next PDE 
+        pte = walkswap(outproc->pgdir, (void *) i);
+         Get Kernel Virtual Address to get data for disk 
+        addr = P2V(PTE_ADDR(*pte));
+         Write data to disk 
+        procbuf = bread(devno, sect);
+        memmove(procbuf->data, addr, BSIZE);
+        for(uint k = sect+1; k < sect+8; ++k) {
+          bwrite(procbuf);
+          brelse(procbuf);
+          procbuf = bread(devno, k);
+          memmove(procbuf->data, addr+=BSIZE, BSIZE);
+        }
+         Free user mem page 
+        kfree(addr);
+      }
+
+       Store user stack in disk 
+      for(uint i = (KERNBASE - (outproc->stack_sz*PGSIZE)); 
+      (i < KERNBASE) && (sect < ((outproc->stack_sz  * 8) + ((outproc->sz / PGSIZE) * 8))); 
+      i+=PGSIZE, sect+=8) {
+         Get next PDE 
+        pte = walkswap(outproc->pgdir, (void *) i);
+         Get Kernel Virtual Address to get data for disk 
+        addr = P2V(PTE_ADDR(*pte));
+         Write data to disk 
+        procbuf = bread(devno, sect);
+        memmove(procbuf->data, addr, BSIZE);
+        for(uint k = sect+1; k < sect+8; ++k) {
+          bwrite(procbuf);
+          brelse(procbuf);
+          procbuf = bread(devno, k);
+          memmove(procbuf->data, addr+=BSIZE, BSIZE);
+        }
+         Free user stack page 
+        kfree(addr);
+      }
+
+       Store kernel stack in disk 
+       Write data to disk 
+      addr = outproc->kstack;
+      procbuf = bread(devno, sect);
+      memmove(procbuf->data, addr, BSIZE);
+      for(uint k = sect+1; k < sect+8; ++k) {
+        bwrite(procbuf);
+        brelse(procbuf);
+        procbuf = bread(devno, k);
+        memmove(procbuf->data, addr+=BSIZE, BSIZE);
+      }
+       Free kernel stack page
+      kfree(outproc->kstack);
+
+       Free page directory 
+      freevm(outproc->pgdir);
+      
+      // swapped in proc set swapped to 0 and t to 0
+       Test if target amount reached 
+      freesz -= (dspace / 8) * PGSIZE;
+      if(freesz <= 0 && inproc) {
+         Memory goal reached. Swap in page 
+         Allocate page directory 
+
+      } else if(freesz <= 0 && !inproc) {
+         Wakeup Kalloc. Enough memory has been freed for it to continue 
+        wakeup(&swapp);
+        break;
+      }
+    }
+do_nothing:
+  } 
+}
+*/
 void
 daemonsinit(void) {
   /* Alerts console every 100 ticks */
   kfork(ticktock);
   /* Manages movement of Processes between RAM and Disk */
- // kfork(swap);
+  //kfork(swap);
 }
   

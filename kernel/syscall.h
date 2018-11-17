@@ -25,5 +25,8 @@
 #define SYS_close   21
 #define SYS_getdate 22
 #define SYS_setdate 23
+#define SYS_mount   24
+#define SYS_unmount 25
+#define SYS_lseek   26
 
 #endif // SYSCALL_H

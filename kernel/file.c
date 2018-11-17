@@ -9,6 +9,7 @@
 #include "spinlock.h"
 #include "sleeplock.h"
 #include "file.h"
+#include "fcntl.h"
 
 struct devsw devsw[NDEV];
 
@@ -86,6 +87,19 @@ filestat(struct file *f, struct stat *st) {
     return 0;
   }
   return -1;
+}
+
+void
+fileseek(struct file *f, int offset, int whence) {
+  /* Modify the offset of the file retrieved */
+  switch(whence) {
+    case SEEK_SET:
+      f->off = offset;
+      break;
+    case SEEK_CUR:
+      f->off += offset;
+      break;
+  }
 }
 
 // Read from file f.

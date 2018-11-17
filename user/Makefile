@@ -8,6 +8,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 
 UPROGS=\
 	_cat\
+	_df\
 	_echo\
 	_forktest\
 	_grep\
@@ -19,7 +20,9 @@ UPROGS=\
 	_rm\
 	_sh\
 	_stressfs\
+	_test_disks\
 	_usertests\
+	_umkfs\
 	_wc\
 	_zombie\
 	_gd\

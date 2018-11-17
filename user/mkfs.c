@@ -232,8 +232,7 @@ ialloc(ushort type)
 }
 
 void
-balloc(int used)
-{
+balloc(int used) {
   uchar buf[BSIZE];
   int i;
 

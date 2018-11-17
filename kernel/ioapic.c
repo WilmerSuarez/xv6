@@ -32,22 +32,19 @@ struct ioapic {
 };
 
 static uint
-ioapicread(int reg)
-{
+ioapicread(int reg) {
   ioapic->reg = reg;
   return ioapic->data;
 }
 
 static void
-ioapicwrite(int reg, uint data)
-{
+ioapicwrite(int reg, uint data) {
   ioapic->reg = reg;
   ioapic->data = data;
 }
 
 void
-ioapicinit(void)
-{
+ioapicinit(void) {
   int i, id, maxintr;
 
   ioapic = (volatile struct ioapic*)IOAPIC;

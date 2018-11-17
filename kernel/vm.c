@@ -339,6 +339,7 @@ copyuvm(pde_t *pgdir, uint sz, uint stack_sz) {
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }
+  
   // Copy upper end of user address space (user stack)
   for(i = (KERNBASE - (stack_sz*PGSIZE)); i < KERNBASE; i += PGSIZE) {
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)

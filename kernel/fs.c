@@ -21,7 +21,6 @@
 #include "buf.h"
 #include "file.h"
 
-#define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
@@ -39,8 +38,7 @@ readsb(int dev, struct superblock *sb) {
 
 // Zero a block.
 static void
-bzero(int dev, int bno)
-{
+bzero(int dev, int bno) {
   struct buf *bp;
 
   bp = bread(dev, bno);
@@ -190,8 +188,7 @@ static struct inode* iget(uint dev, uint inum);
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode.
 struct inode*
-ialloc(uint dev, short type)
-{
+ialloc(uint dev, short type) {
   int inum;
   struct buf *bp;
   struct dinode *dip;
@@ -237,8 +234,7 @@ iupdate(struct inode *ip)
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
 static struct inode*
-iget(uint dev, uint inum)
-{
+iget(uint dev, uint inum) {
   struct inode *ip, *empty;
 
   acquire(&icache.lock);
@@ -453,7 +449,7 @@ readi(struct inode *ip, char *dst, uint off, uint n) {
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].read(ip, dst, n);
+    return devsw[ip->major].read(ip, dst, n, off);
   }
 
   if(off > ip->size || off + n < off)
@@ -481,7 +477,7 @@ writei(struct inode *ip, char *src, uint off, uint n) {
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
-    return devsw[ip->major].write(ip, src, n);
+    return devsw[ip->major].write(ip, src, n, off);
   }
 
   if(off > ip->size || off + n < off)
@@ -508,8 +504,7 @@ writei(struct inode *ip, char *src, uint off, uint n) {
 // Directories
 
 int
-namecmp(const char *s, const char *t)
-{
+namecmp(const char *s, const char *t) {
   return strncmp(s, t, DIRSIZ);
 }
 
@@ -616,8 +611,7 @@ skipelem(char *path, char *name)
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
 static struct inode*
-namex(char *path, int nameiparent, char *name)
-{
+namex(char *path, int nameiparent, char *name) {
   struct inode *ip, *next;
 
   if(*path == '/')
@@ -651,14 +645,76 @@ namex(char *path, int nameiparent, char *name)
 }
 
 struct inode*
-namei(char *path)
-{
+namei(char *path) {
   char name[DIRSIZ];
   return namex(path, 0, name);
 }
 
 struct inode*
-nameiparent(char *path, char *name)
-{
+nameiparent(char *path, char *name) {
   return namex(path, 1, name);
+}
+
+struct mount_table {
+  char *mp;
+  struct inode *inode;
+  uint major;
+  uint minor;
+} mount_table[NINODE] = { 0 };
+
+/* Mount table entry index */
+uint mt_index = 0;
+
+/*
+  Mount other file system to original file system
+*/
+int             
+mount(char *source, char *target) {
+  struct inode *sourcenode;
+
+  /* Test if entry already added */
+  for(uint i = 0; i < NINODE; ++i) {
+    if(mount_table[i].mp == target) {
+      cprintf("Mount point already exists");
+      return -1;
+    }
+  }
+
+  /* Get source inode */
+  sourcenode = namex(source, 0, 0);
+
+  /* Add entry to table */
+  mount_table[mt_index].mp = target;
+  mount_table[mt_index].inode = namex(target, 0, 0); // Get target (mount point) inode
+  mount_table[mt_index].major = sourcenode->major;
+  mount_table[mt_index].minor = sourcenode->minor;  
+
+  mt_index++;
+
+  return 0;
+}
+
+/*
+  Unmount a previously mounted file system
+*/
+int             
+unmount(char *target) {
+  /* Test if mount table is empty */
+  if(mount_table[0].mp == 0) {
+    cprintf("Mount table is empty");
+    return -1;
+  }
+
+
+  /* Look for target in mount table and remove it */
+  for(uint i = 0; i < NINODE; ++i) {
+    if(mount_table[i].mp == target) {
+      memset(&mount_table[i], 0, sizeof(struct mount_table));
+      return 0;
+    }
+  }
+
+  /* If target not found, non-existant target given */
+  cprintf("Mount Point does not exist");
+  return -1;
 }

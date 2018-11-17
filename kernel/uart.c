@@ -107,7 +107,7 @@ uartgetc(int coms) {
 }
 
 int
-uartwrite(struct inode *ip, char *buf, int n) {
+uartwrite(struct inode *ip, char *buf, int n, uint off) {
   int i;
 
   iunlock(ip);
@@ -127,7 +127,7 @@ uartwrite(struct inode *ip, char *buf, int n) {
 }
 
 int
-uartread(struct inode *ip, char *dst, int n) {
+uartread(struct inode *ip, char *dst, int n, uint off) {
   uint target;
   int c;
 

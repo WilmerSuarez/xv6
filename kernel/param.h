@@ -11,4 +11,10 @@
 #define LOGSIZE      (MAXOPBLOCKS*3)  // max data blocks in on-disk log
 #define NBUF         (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE       1000  // size of file system in blocks
-#define SDSIZE       10000 // Swap device size in blocks
+#define DSIZE        10000 // Disk device size in blocks
+
+/* IDE Controllers base addresses */
+#define BASE_ADDR1    0x1F0
+#define BASE_ADDR2    0x3F6
+#define BASE_ADDR3    0x170
+#define BASE_ADDR4    0x376

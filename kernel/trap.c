@@ -89,12 +89,15 @@ trap(struct trapframe *tf) {
     }
     lapiceoi();
     break;
-  case T_IRQ0 + IRQ_IDE:
+  case T_IRQ0 + IRQ_IDE_P:
+    /* Primary IDE controller interrupt */
     ideintr();
     lapiceoi();
     break;
-  case T_IRQ0 + IRQ_IDE+1:
-    // Bochs generates spurious IDE1 interrupts.
+  case T_IRQ0 + IRQ_IDE_S:
+    /* Secondary IDE controller interrupt */
+    ideintr();
+    lapiceoi();
     break;
   case T_IRQ0 + IRQ_KBD:
     kbdintr();
