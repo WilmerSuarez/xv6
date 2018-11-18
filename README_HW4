@@ -44,7 +44,9 @@ entries '.' and '..'
 
 ### "Native" mkfs Tests:
 
- -  
+ - ```./usertests```
+	 - [x] passed 
+	 - Except for bigfile test (Test runs out of blocks)
 
 *********************************************************
 ## Mount and Unmount

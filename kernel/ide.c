@@ -35,7 +35,7 @@ static struct spinlock idelock;
 static struct buf *idequeue;
 
 static int havedisk[DISK_NUM];
-static void idestart(struct buf*);
+static void idestart(struct buf*, uint, uint);
 
 /* Wait for IDE controllers to become ready */
 static int
@@ -67,6 +67,10 @@ ideread(struct inode *ip, char *dst, int n, uint off) {
   uint block_addr, total, n_bytes;
   struct buf *b;
 
+  /* Test for End of File */
+  if((off > (DSIZE*BSIZE)) || (off+n > (DSIZE*BSIZE)))
+    return -1;
+
   iunlock(ip);
   
   /* Read n bytes from disk */
@@ -74,8 +78,8 @@ ideread(struct inode *ip, char *dst, int n, uint off) {
     /* Calculate disk block address */ 
     block_addr = ((off/BSIZE) % DSIZE);
     /* Read associated block */
-    b = bread(ip->dev, block_addr);
-    /* Determine how many bytes to read next */
+    b = bread(ip->minor, block_addr);
+    /* Determine hfow many bytes to read next */
     n_bytes = min(n - total, BSIZE - off%BSIZE);
     /* Read and update data buffer from block */
     memmove(dst, b->data + off%BSIZE, n_bytes);
@@ -93,6 +97,14 @@ idewrite(struct inode *ip, char *buf, int n, uint off) {
   uint block_addr, total, n_bytes;
   struct buf *b;
 
+  /* Test for End of File */
+  if((off > (DSIZE*BSIZE)) || (off+n > (DSIZE*BSIZE)))
+    return -1;
+
+  /* Prevent Writing to disk 0 or disk 1*/
+  if(ip->minor == 0 || ip->minor == 1) 
+    return -1;
+
   iunlock(ip);
 
   /* Read n bytes from disk and write to Source */
@@ -100,7 +112,7 @@ idewrite(struct inode *ip, char *buf, int n, uint off) {
     /* Calculate disk block address */ 
     block_addr = ((off/BSIZE) % DSIZE);
     /* Read associated block */
-    b = bread(ip->dev, block_addr);
+    b = bread(ip->minor, block_addr);
     /* Determine how many bytes to write next */
     n_bytes = min(n - total, BSIZE - off%BSIZE);
     /* Write data from buffer param to block */
@@ -118,24 +130,27 @@ idewrite(struct inode *ip, char *buf, int n, uint off) {
 void
 ideinit(void) {
   initlock(&idelock, "ide");
+  
+  /* Initialize IDE Device Switch entry */
+  devsw[IDE].write = idewrite;
+  devsw[IDE].read = ideread;
+  
   /* Enable IRQ 14 & wait for Primary IDE controller to be ready */
   ioapicenable(IRQ_IDE_P, ncpu - 1);
   idewait(0, BASE_ADDR1);
-  /* Enable IRQ 15 & wait for Secondary IDE controller to be ready */
-  ioapicenable(IRQ_IDE_S, ncpu - 1);
-  idewait(0, BASE_ADDR3);
 
   havedisk[0] = 1;
   /* Check if disk 1 is present */
   diskp(1, BASE_ADDR1, 1);
+  
+  /* Enable IRQ 15 & wait for Secondary IDE controller to be ready */
+  ioapicenable(IRQ_IDE_S, ncpu - 1);
+  idewait(0, BASE_ADDR3);
+  
   /* Check if disk 2 is present */
   diskp(2, BASE_ADDR3, 0);
   /* Check if disk 3 is present */
   diskp(3, BASE_ADDR3, 1);
-
-  /* Initialize IDE Device Switch entry */
-  devsw[IDE].write = idewrite;
-  devsw[IDE].read = ideread;
 
   // Switch back to disk 0.
   outb(0x1f6, 0xe0 | (0<<4));
@@ -143,18 +158,10 @@ ideinit(void) {
 
 // Start the request for b.  Caller must hold idelock.
 static void
-idestart(struct buf *b) {
-  uint size, channel = BASE_ADDR1, channelctr = BASE_ADDR2;
-  /* Allow access to 10000 blocks for disk, 0, 2, & 3 */
-  if(b->dev == ROOTDEV) {
-    size = FSSIZE;
-  } else {
-    size = DSIZE;
-  }
-
+idestart(struct buf *b, uint channel, uint channelctr) {
   if(b == 0)
     panic("idestart");
-  if(b->blockno >= size)
+  if(b->blockno >= FSSIZE)
     panic("incorrect blockno");
     
   int sector_per_block =  BSIZE/SECTOR_SIZE;
@@ -164,15 +171,6 @@ idestart(struct buf *b) {
 
   if (sector_per_block > 7) 
     panic("idestart");
-
-  /* Determine which controller is being used */
-  if(b->dev == 0 || b->dev == 1) {
-    channel = BASE_ADDR1;
-    channelctr = BASE_ADDR2;
-  } else if(b->dev == 2 || b->dev == 3) {
-    channel = BASE_ADDR3;
-    channelctr = BASE_ADDR4;
-  }
 
   idewait(0, channel);
   outb(channelctr, 0);                  // generate interrupt
@@ -198,10 +196,8 @@ idestart(struct buf *b) {
     channelctrl - primary/secondary channel control port
 */
 void
-ideintr(void) {
+ideintr(uint channel, uint channelctr) {
   struct buf *b;
-  uint channel = BASE_ADDR1;
-  
   // First queued buffer is the active request.
   acquire(&idelock);
 
@@ -212,13 +208,6 @@ ideintr(void) {
   }
   // Whatever was at the top of the queue has been serviced, so move to next entry in queue
   idequeue = b->qnext;
-
-  /* Determine which controller is being used */
-  if(b->dev == 0 || b->dev == 1) {
-    channel = BASE_ADDR1;
-  } else if(b->dev == 2 || b->dev == 3) {
-    channel = BASE_ADDR3;
-  }
 
   // Read data if needed
   if(!(b->flags & B_DIRTY) && idewait(1, channel) >= 0)
@@ -232,7 +221,7 @@ ideintr(void) {
   // Start disk on next buf in queue.
   // If idequeue is not empty (more requests to service)
   if(idequeue != 0)
-    idestart(idequeue);
+    idestart(idequeue, channel, channelctr);
   
   release(&idelock);
 }
@@ -269,8 +258,13 @@ iderw(struct buf *b) {
 
   // If first request to access disk
   // If only one buffer in idequeue (first element in queue), execute its request
-  if(idequeue == b)
-    idestart(b);
+  if(idequeue == b) {
+    if(b->dev < 2) {
+      idestart(b, BASE_ADDR1, BASE_ADDR2);
+    } else {
+      idestart(b, BASE_ADDR3, BASE_ADDR4);
+    }
+  }
   
   // If ^ failed... idequeue not empty
   // disk already started taking requests from queue. No need to start again.

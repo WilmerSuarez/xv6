@@ -12,7 +12,6 @@
 #include "fcntl.h"
 
 struct devsw devsw[NDEV];
-
 struct {
   struct spinlock lock;
   struct file file[NFILE];
@@ -21,6 +20,19 @@ struct {
 void
 fileinit(void) {
   initlock(&ftable.lock, "ftable");
+}
+
+void
+fileseek(struct file *f, int offset, int whence) {
+  /* Modify the offset of the file retrieved */
+  switch(whence) {
+    case SEEK_SET:
+      f->off = offset;
+      break;
+    case SEEK_CUR:
+      f->off += offset;
+      break;
+  }
 }
 
 // Allocate a file structure.
@@ -87,19 +99,6 @@ filestat(struct file *f, struct stat *st) {
     return 0;
   }
   return -1;
-}
-
-void
-fileseek(struct file *f, int offset, int whence) {
-  /* Modify the offset of the file retrieved */
-  switch(whence) {
-    case SEEK_SET:
-      f->off = offset;
-      break;
-    case SEEK_CUR:
-      f->off += offset;
-      break;
-  }
 }
 
 // Read from file f.

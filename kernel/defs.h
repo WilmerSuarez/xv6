@@ -65,7 +65,7 @@ int             unmount(char *);
 
 // ide.c
 void            ideinit(void);
-void            ideintr(void);
+void            ideintr(uint, uint);
 void            iderw(struct buf*);
 
 // ioapic.c

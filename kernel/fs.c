@@ -21,6 +21,7 @@
 #include "buf.h"
 #include "file.h"
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
 static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
@@ -28,7 +29,8 @@ struct superblock sb;
 
 // Read the super block.
 void
-readsb(int dev, struct superblock *sb) {
+readsb(int dev, struct superblock *sb)
+{
   struct buf *bp;
 
   bp = bread(dev, 1);
@@ -38,7 +40,8 @@ readsb(int dev, struct superblock *sb) {
 
 // Zero a block.
 static void
-bzero(int dev, int bno) {
+bzero(int dev, int bno)
+{
   struct buf *bp;
 
   bp = bread(dev, bno);
@@ -51,7 +54,8 @@ bzero(int dev, int bno) {
 
 // Allocate a zeroed disk block.
 static uint
-balloc(uint dev) {
+balloc(uint dev)
+{
   int b, bi, m;
   struct buf *bp;
 
@@ -75,7 +79,8 @@ balloc(uint dev) {
 
 // Free a disk block.
 static void
-bfree(int dev, uint b) {
+bfree(int dev, uint b)
+{
   struct buf *bp;
   int bi, m;
 
@@ -188,7 +193,8 @@ static struct inode* iget(uint dev, uint inum);
 // Mark it as allocated by  giving it type type.
 // Returns an unlocked but allocated and referenced inode.
 struct inode*
-ialloc(uint dev, short type) {
+ialloc(uint dev, short type)
+{
   int inum;
   struct buf *bp;
   struct dinode *dip;
@@ -234,7 +240,8 @@ iupdate(struct inode *ip)
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
 static struct inode*
-iget(uint dev, uint inum) {
+iget(uint dev, uint inum)
+{
   struct inode *ip, *empty;
 
   acquire(&icache.lock);
@@ -289,7 +296,7 @@ ilock(struct inode *ip)
 
   acquiresleep(&ip->lock);
 
-  if(ip->valid == 0){ // If it has not been read from disk
+  if(ip->valid == 0){
     bp = bread(ip->dev, IBLOCK(ip->inum, sb));
     dip = (struct dinode*)bp->data + ip->inum%IPB;
     ip->type = dip->type;
@@ -307,7 +314,8 @@ ilock(struct inode *ip)
 
 // Unlock the given inode.
 void
-iunlock(struct inode *ip) {
+iunlock(struct inode *ip)
+{
   if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
@@ -430,7 +438,8 @@ itrunc(struct inode *ip)
 // Copy stat information from inode.
 // Caller must hold ip->lock.
 void
-stati(struct inode *ip, struct stat *st) {
+stati(struct inode *ip, struct stat *st)
+{
   st->dev = ip->dev;
   st->ino = ip->inum;
   st->type = ip->type;
@@ -442,7 +451,8 @@ stati(struct inode *ip, struct stat *st) {
 // Read data from inode.
 // Caller must hold ip->lock.
 int
-readi(struct inode *ip, char *dst, uint off, uint n) {
+readi(struct inode *ip, char *dst, uint off, uint n)
+{
   uint tot, m;
   struct buf *bp;
 
@@ -504,7 +514,8 @@ writei(struct inode *ip, char *src, uint off, uint n) {
 // Directories
 
 int
-namecmp(const char *s, const char *t) {
+namecmp(const char *s, const char *t)
+{
   return strncmp(s, t, DIRSIZ);
 }
 

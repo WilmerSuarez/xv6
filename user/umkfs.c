@@ -5,6 +5,8 @@
 #include "kernel/fcntl.h"
 #include "user.h"
 
+#define static_assert(a, b) do { switch (0) case 0: case (a): ; } while (0)
+
 /* Number of Inodes */
 #define NINODES 200
 
@@ -65,6 +67,8 @@ main(int argc, char *argv[]) {
     struct dirent de;
     char buf[BSIZE];
     struct dinode din;
+
+    static_assert(sizeof(int) == 4, "Integers must be 4 bytes!");
 
     /* Make sure user passsed in disk node name argument */
     if(argc < 2){
@@ -215,7 +219,6 @@ balloc(int used) {
   int i;
 
   printf(stdout, "balloc: first %d blocks have been allocated\n", used);
-  //assert(used < BSIZE*8);
   bzero(buf, BSIZE);
   for(i = 0; i < used; i++){
     buf[i/8] = buf[i/8] | (0x1 << (i%8));
@@ -239,7 +242,6 @@ iappend(uint inum, void *xp, int n) {
   off = xint(din.size);
   while(n > 0){
     fbn = off / BSIZE;
-    //assert(fbn < MAXFILE);
     if(fbn < NDIRECT){
       if(xint(din.addrs[fbn]) == 0){
         din.addrs[fbn] = xint(freeblock++);

@@ -91,12 +91,12 @@ trap(struct trapframe *tf) {
     break;
   case T_IRQ0 + IRQ_IDE_P:
     /* Primary IDE controller interrupt */
-    ideintr();
+    ideintr(BASE_ADDR1, BASE_ADDR2);
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE_S:
     /* Secondary IDE controller interrupt */
-    ideintr();
+    ideintr(BASE_ADDR3, BASE_ADDR4);
     lapiceoi();
     break;
   case T_IRQ0 + IRQ_KBD:
