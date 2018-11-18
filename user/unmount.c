@@ -3,7 +3,18 @@
 
 int
 main(int argc, char *argv[]) {
-    
+    uint stderr = 2;
+
+    /* Must receive mount point argument */
+    if(argc < 2) {
+        printf(stderr, "Usage: unmount [mount point]\n");
+        exit(0);
+    }
+
+    /* Unmount the device */
+    if(unmount(argv[1]) < 0) {
+        printf(stderr, "Unmounting failed!\n");
+    }
 
     exit(0);
 }

@@ -17,12 +17,14 @@ UPROGS=\
 	_ln\
 	_ls\
 	_mkdir\
+	_mount\
 	_rm\
 	_sh\
 	_stressfs\
 	_test_disks\
 	_usertests\
 	_umkfs\
+	_unmount\
 	_wc\
 	_zombie\
 	_gd\
