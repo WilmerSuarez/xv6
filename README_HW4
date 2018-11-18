@@ -55,12 +55,50 @@ Mounting and Unmounting functionallity was added.
 A **mount table** was created that holds the inodes of 
 mount points a long with the major and minor device numbers.
 During pathname resolution, the table is searched to test if 
-mounting point is about to searched. If it is, then the inode for the
-mount point is followed. 
+mounting point is found. If it is, then the root inode for the 
+mounted device is followed.  
 Unmounting removes the mount point from the mount table.
+
+Issues:
+	The first issue resolved was the ability to return the the parent
+	from inside the mount point after mounting a device onto it. 
+	In other words, handling the use of ".." within the mount point directory.
+	This was done by 
 
 ### Mount and Unmount Tests:
 
- - 
+ 1. Initialze disk2 with a filesystem
+	```umkfs disk2``` (**might take a few seconds**)
+ 2. Create a directory to serve as the **mount point**
+	```mkdir /mnt```
+ 3. Create another directory in /mnt and a file 
+    ```mkdir /mnt/testdir```
+	```cd /mnt```
+	```../cat > file.txt```
+	```Hello!```
+	(ctrl-d)
+	```cd ..```
+ 4. Mount:
+	```mount /disk2 /mnt```
+ 5. Check that the /mnt dir no longer has testdir and file.txt
+	```ls /mnt```
+ 6. Create a directory and file in /mnt
+	```mkdir /mnt/testdir2```
+	```cd /mnt```
+	```../cat > file2.txt```
+	```Hello2!```
+	(ctrl-d)
+	```cd ..```
+ 7. Unmount /mnt, test and see if testdir and file.txt are present and testdir2 and file2.txt are not
+	```unmount /mnt```
+	```ls /mnt```
+ 8. Remount /disk2 on /mnt and check if testdir2 and file2.txt are present
+	```mount /disk2 /mnt```
+	```ls /mnt```
+
+	- disk3 was tested the same
+
+	- Create two mount points and mount disk2 and disk3 to the first and second respectively, and 
+	perform the same test ^
 
 *********************************************************

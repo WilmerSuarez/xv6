@@ -27,6 +27,16 @@ static void itrunc(struct inode*);
 // only one device
 struct superblock sb; 
 
+/* 
+  Mount table maps inodes of mount points to major and 
+  minor device numbers of the mounted device 
+*/
+struct mount_table {
+  struct inode *mpnode;   // Target (mount point) Inode 
+  uint major;             // Major device number of disk to be mounted
+  uint minor;             // Minor device number of disk to be mounted
+} mount_table[NINODE];
+
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
@@ -240,8 +250,7 @@ iupdate(struct inode *ip)
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
 static struct inode*
-iget(uint dev, uint inum)
-{
+iget(uint dev, uint inum) {
   struct inode *ip, *empty;
 
   acquire(&icache.lock);
@@ -286,8 +295,7 @@ idup(struct inode *ip)
 // Lock the given inode.
 // Reads the inode from disk if necessary.
 void
-ilock(struct inode *ip)
-{
+ilock(struct inode *ip) {
   struct buf *bp;
   struct dinode *dip;
 
@@ -617,6 +625,8 @@ skipelem(char *path, char *name)
   return path;
 }
 
+struct inode *mntroot = 0, *mntpnt = 0;
+
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
@@ -624,6 +634,7 @@ skipelem(char *path, char *name)
 static struct inode*
 namex(char *path, int nameiparent, char *name) {
   struct inode *ip, *next;
+  char *prnt = "..";
 
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
@@ -641,12 +652,26 @@ namex(char *path, int nameiparent, char *name) {
       iunlock(ip);
       return ip;
     }
+    if((name == prnt) && (mntroot == ip)) {
+      ip = mntpnt;
+    }
     if((next = dirlookup(ip, name, 0)) == 0){
       iunlockput(ip);
       return 0;
     }
     iunlockput(ip);
     ip = next;
+
+    /* Is the directory a mount point? */
+    for(uint i = 0; i < NINODE; ++i) {
+      if(ip == mount_table[i].mpnode) {
+        mntpnt = mount_table[i].mpnode;
+        /* Swich ip with root inode of mounted device */
+        ip = iget(mount_table[i].minor, ROOTINO);
+        mntroot = ip;
+        break;
+      }
+    }
   }
   if(nameiparent){
     iput(ip);
@@ -666,41 +691,25 @@ nameiparent(char *path, char *name) {
   return namex(path, 1, name);
 }
 
-struct mount_table {
-  char *mp;
-  struct inode *inode;
-  uint major;
-  uint minor;
-} mount_table[NINODE] = { 0 };
-
-/* Mount table entry index */
-uint mt_index = 0;
-
 /*
   Mount other file system to original file system
 */
 int             
 mount(char *source, char *target) {
-  struct inode *sourcenode;
+  struct inode *snode, *tnode;
+  
+  /* Get source & target inodes */
+  snode = namei(source);
+  tnode = namei(target);
 
-  /* Test if entry already added */
-  for(uint i = 0; i < NINODE; ++i) {
-    if(mount_table[i].mp == target) {
-      cprintf("Mount point already exists");
-      return -1;
-    }
-  }
-
-  /* Get source inode */
-  sourcenode = namex(source, 0, 0);
+  ilock(snode);
 
   /* Add entry to table */
-  mount_table[mt_index].mp = target;
-  mount_table[mt_index].inode = namex(target, 0, 0); // Get target (mount point) inode
-  mount_table[mt_index].major = sourcenode->major;
-  mount_table[mt_index].minor = sourcenode->minor;  
+  mount_table[snode->minor].mpnode = tnode;
+  mount_table[snode->minor].major = snode->major;
+  mount_table[snode->minor].minor = snode->minor;  
 
-  mt_index++;
+  iunlock(snode);
 
   return 0;
 }
@@ -710,22 +719,16 @@ mount(char *source, char *target) {
 */
 int             
 unmount(char *target) {
-  /* Test if mount table is empty */
-  if(mount_table[0].mp == 0) {
-    cprintf("Mount table is empty");
-    return -1;
-  }
+  struct inode *tnode = namei(target);
 
+  ilock(tnode);
 
-  /* Look for target in mount table and remove it */
-  for(uint i = 0; i < NINODE; ++i) {
-    if(mount_table[i].mp == target) {
-      memset(&mount_table[i], 0, sizeof(struct mount_table));
-      return 0;
-    }
-  }
+  /* Remove entry from table */
+  mount_table[tnode->dev].mpnode = 0; 
+  mount_table[tnode->dev].major = 0;
+  mount_table[tnode->dev].minor = 0;
+  
+  iunlock(tnode);
 
-  /* If target not found, non-existant target given */
-  cprintf("Mount Point does not exist");
-  return -1;
+  return 0;
 }

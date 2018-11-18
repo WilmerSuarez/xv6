@@ -153,7 +153,6 @@ sys_open(void) {
   f->off = 0;
   f->readable = !(omode & O_WRONLY);
   f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
-  cprintf("dev: %d, major: %d, minor: %d\n", ip->dev, ip->major, ip->minor);
   return fd;
 }
 
