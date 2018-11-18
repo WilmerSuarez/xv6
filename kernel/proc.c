@@ -780,16 +780,16 @@ found:
 }
 
 /* ---------- DAEMONS ---------- */
-/*static void 
+static void 
 ticktock(void) {
   uint i = 100;
-  uint _ticks;*/
+  uint _ticks;
 
   /* 
     Release ptable.lock still being
     held by scheduler 
   */
-  /*release(&ptable.lock);
+  release(&ptable.lock);
 
   for(;;) {
     acquire(&tickslock);
@@ -800,7 +800,7 @@ ticktock(void) {
     cprintf("100 Ticks!\n");
     release(&tickslock);
   }
-}*/
+}
 
 /*
   Used by swaprobin() to remeber the starting index in the ptable 
@@ -1049,7 +1049,7 @@ do_nothing:
 void
 daemonsinit(void) {
   /* Alerts console every 100 ticks */
-  //kfork(ticktock);
+  kfork(ticktock);
   /* Manages movement of Processes between RAM and Disk */
   //kfork(swap);
 }
