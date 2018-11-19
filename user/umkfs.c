@@ -102,8 +102,8 @@ main(int argc, char *argv[]) {
     freeblock = nmeta;     
 
     /* Zero out all FS blocks */
-    for(uint i = 0; i < FSSIZE; i++)
-    wsect(i, zeroes);
+    //for(uint i = 0; i < FSSIZE; i++)
+    //wsect(i, zeroes);
 
     /* Write the Super Block to the first block in Disk */
     memset(buf, 0, sizeof(buf)); 

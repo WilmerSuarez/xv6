@@ -46,7 +46,6 @@ entries '.' and '..'
 
  - ```./usertests```
 	 - [x] passed 
-	 - Except for bigfile test (Test runs out of blocks)
 
 *********************************************************
 ## Mount and Unmount
@@ -100,5 +99,19 @@ Issues:
 
 	- Create two mount points and mount disk2 and disk3 to the first and second respectively, and 
 	perform the same test ^
+
+	- User cannot mount multiple devices to one mount point
+	Test: 
+		```mount disk2 mnt```
+		```mount disk3 mnt```
+	- User cannot mount one device on multiple targets
+	Test:
+		``` mount disk2 mnt```
+		``` mount disk2 mnt2```
+	- User cannot unmount a non existing mount point
+
+	- ```./usertests``` - Allowed for umkfs and mkfs to use more blocks (increased FSSIZE) so that bigfile test can succeed
+						- made size 10000 (bigfile tests takes a minute or two)
+	 - [x] passed 
 
 *********************************************************

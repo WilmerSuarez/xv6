@@ -13,7 +13,7 @@ main(int argc, char *argv[]) {
 
     /* Mount the device */
     if(mount(argv[1], argv[2]) < 0) {
-        printf(stderr, "Mounting failed!\n");
+        printf(stderr, "Mounting failed. See console.\n");
     }
     
     exit(0);

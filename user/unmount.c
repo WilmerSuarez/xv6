@@ -13,7 +13,7 @@ main(int argc, char *argv[]) {
 
     /* Unmount the device */
     if(unmount(argv[1]) < 0) {
-        printf(stderr, "Unmounting failed!\n");
+        printf(stderr, "Unmounting failed. See console.\n");
     }
 
     exit(0);

@@ -33,9 +33,10 @@ struct superblock sb;
 */
 struct mount_table {
   struct inode *mpnode;   // Target (mount point) Inode 
+  uint mounted;           // Does this entry exist?
   uint major;             // Major device number of disk to be mounted
   uint minor;             // Minor device number of disk to be mounted
-} mount_table[NINODE];
+} mount_table[NINODE] = { 0 };
 
 // Read the super block.
 void
@@ -322,8 +323,7 @@ ilock(struct inode *ip) {
 
 // Unlock the given inode.
 void
-iunlock(struct inode *ip)
-{
+iunlock(struct inode *ip) {
   if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
@@ -530,8 +530,7 @@ namecmp(const char *s, const char *t)
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
 struct inode*
-dirlookup(struct inode *dp, char *name, uint *poff)
-{
+dirlookup(struct inode *dp, char *name, uint *poff) {
   uint off, inum;
   struct dirent de;
 
@@ -625,8 +624,6 @@ skipelem(char *path, char *name)
   return path;
 }
 
-struct inode *mntroot = 0, *mntpnt = 0;
-
 // Look up and return the inode for a path name.
 // If parent != 0, return the inode for the parent and copy the final
 // path element into name, which must have room for DIRSIZ bytes.
@@ -634,7 +631,6 @@ struct inode *mntroot = 0, *mntpnt = 0;
 static struct inode*
 namex(char *path, int nameiparent, char *name) {
   struct inode *ip, *next;
-  char *prnt = "..";
 
   if(*path == '/')
     ip = iget(ROOTDEV, ROOTINO);
@@ -652,8 +648,14 @@ namex(char *path, int nameiparent, char *name) {
       iunlock(ip);
       return ip;
     }
-    if((name == prnt) && (mntroot == ip)) {
-      ip = mntpnt;
+    if(!strncmp(name, "..", 2)) {
+      /* Is there a mount table entry for this device? */ 
+      if(mount_table[ip->dev].mounted) {
+        iunlockput(ip);
+        ip = mount_table[ip->dev].mpnode;
+        ilock(ip);
+        idup(ip);
+      }
     }
     if((next = dirlookup(ip, name, 0)) == 0){
       iunlockput(ip);
@@ -661,14 +663,11 @@ namex(char *path, int nameiparent, char *name) {
     }
     iunlockput(ip);
     ip = next;
-
     /* Is the directory a mount point? */
     for(uint i = 0; i < NINODE; ++i) {
       if(ip == mount_table[i].mpnode) {
-        mntpnt = mount_table[i].mpnode;
         /* Swich ip with root inode of mounted device */
         ip = iget(mount_table[i].minor, ROOTINO);
-        mntroot = ip;
         break;
       }
     }
@@ -704,7 +703,23 @@ mount(char *source, char *target) {
 
   ilock(snode);
 
+  /* Prevent multiple devices from mounting on to the same mount point */
+  for(uint i = 0; i < NINODE; ++i) {
+    if(mount_table[i].mpnode == tnode) {
+      iunlock(snode);
+      cprintf("Cannot mount multiple devices to a single mount point!\n");
+      return -1;
+    }
+  }
+  /* Prevent mounting the same device on multiple mount points */
+  if(mount_table[snode->minor].mounted) {
+    iunlock(snode);
+    cprintf("Cannot mount the same device on multiple mount points!\n");
+    return -1;
+  }
+
   /* Add entry to table */
+  mount_table[snode->minor].mounted = 1;
   mount_table[snode->minor].mpnode = tnode;
   mount_table[snode->minor].major = snode->major;
   mount_table[snode->minor].minor = snode->minor;  
@@ -723,7 +738,15 @@ unmount(char *target) {
 
   ilock(tnode);
 
+  /* If mount table entry does not exist */
+  if(!mount_table[tnode->dev].mounted) {
+    cprintf("Mount table entry doest not exist!\n");
+    iunlock(tnode);
+    return -1;
+  }
+
   /* Remove entry from table */
+  mount_table[tnode->minor].mounted = 0;
   mount_table[tnode->dev].mpnode = 0; 
   mount_table[tnode->dev].major = 0;
   mount_table[tnode->dev].minor = 0;
