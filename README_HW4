@@ -62,7 +62,8 @@ Issues:
 	The first issue resolved was the ability to return the the parent
 	from inside the mount point after mounting a device onto it. 
 	In other words, handling the use of ".." within the mount point directory.
-	This was done by 
+	This was done by testing for the ".." being search while the current inode is a 
+	device root inode. If so, the inode is replaced by the inode of the mountpoint.
 
 ### Mount and Unmount Tests:
 
@@ -112,6 +113,6 @@ Issues:
 
 	- ```./usertests``` - Allowed for umkfs and mkfs to use more blocks (increased FSSIZE) so that bigfile test can succeed
 						- made size 10000 (bigfile tests takes a minute or two)
-	 - [x] passed 
+	 - [x] passed 		- Reverted back to size 1000 for regular use (umkfs takes too long because of the block zeroing - removing block zeroing causes panic in ilock).
 
 *********************************************************

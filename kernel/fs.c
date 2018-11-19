@@ -338,8 +338,7 @@ iunlock(struct inode *ip) {
 // All calls to iput() must be inside a transaction in
 // case it has to free the inode.
 void
-iput(struct inode *ip)
-{
+iput(struct inode *ip) {
   acquiresleep(&ip->lock);
   if(ip->valid && ip->nlink == 0){
     acquire(&icache.lock);
@@ -666,6 +665,7 @@ namex(char *path, int nameiparent, char *name) {
     /* Is the directory a mount point? */
     for(uint i = 0; i < NINODE; ++i) {
       if(ip == mount_table[i].mpnode) {
+        iput(ip);
         /* Swich ip with root inode of mounted device */
         ip = iget(mount_table[i].minor, ROOTINO);
         break;
@@ -700,6 +700,12 @@ mount(char *source, char *target) {
   /* Get source & target inodes */
   snode = namei(source);
   tnode = namei(target);
+
+  /* If mount table entry does not exist */
+  if(!snode || !tnode) {
+    cprintf("Source or Target cannot be mounted (does not exist)!\n");
+    return -1;
+  }
 
   ilock(snode);
 
@@ -736,17 +742,16 @@ int
 unmount(char *target) {
   struct inode *tnode = namei(target);
 
-  ilock(tnode);
-
   /* If mount table entry does not exist */
-  if(!mount_table[tnode->dev].mounted) {
+  if(!tnode) {
     cprintf("Mount table entry doest not exist!\n");
-    iunlock(tnode);
     return -1;
   }
 
+  ilock(tnode);  
+
   /* Remove entry from table */
-  mount_table[tnode->minor].mounted = 0;
+  mount_table[tnode->dev].mounted = 0;
   mount_table[tnode->dev].mpnode = 0; 
   mount_table[tnode->dev].major = 0;
   mount_table[tnode->dev].minor = 0;
