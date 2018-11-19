@@ -709,19 +709,20 @@ mount(char *source, char *target) {
 
   ilock(snode);
 
-  /* Prevent multiple devices from mounting on to the same mount point */
-  for(uint i = 0; i < NINODE; ++i) {
-    if(mount_table[i].mpnode == tnode) {
-      iunlock(snode);
-      cprintf("Cannot mount multiple devices to a single mount point!\n");
-      return -1;
-    }
-  }
-  /* Prevent mounting the same device on multiple mount points */
+  /* Prevent mounting the same device on multiple mount points */ 
   if(mount_table[snode->minor].mounted) {
     iunlock(snode);
     cprintf("Cannot mount the same device on multiple mount points!\n");
     return -1;
+  }
+
+  /* Prevent multiple devices from mounting on to the same mount point */
+  for(uint i = 0; i < NINODE; ++i) {
+    if(mount_table[i].minor == snode->minor) {
+      iunlock(snode);
+      cprintf("Cannot mount multiple devices to a single mount point!\n");
+      return -1;
+    }
   }
 
   /* Add entry to table */
@@ -740,15 +741,30 @@ mount(char *source, char *target) {
 */
 int             
 unmount(char *target) {
+  char *tgt = target;
   struct inode *tnode = namei(target);
 
-  /* If mount table entry does not exist */
+  /* If target directory does not exits */
   if(!tnode) {
     cprintf("Mount table entry doest not exist!\n");
     return -1;
   }
 
   ilock(tnode);  
+
+  /* If target is not a mount point */
+  if(!mount_table[tnode->dev].mounted) {
+    cprintf("Mount table entry doest not exist!\n");
+    iunlock(tnode);
+    return -1;
+  }
+
+  /* Prevent dangling inodes */
+  if(myproc()->cwd == mount_table[tnode->dev].mpnode) {
+    char name[DIRSIZ];
+    myproc()->cwd = nameiparent(tgt, name); 
+    idup(myproc()->cwd);
+  }
 
   /* Remove entry from table */
   mount_table[tnode->dev].mounted = 0;
