@@ -36,8 +36,7 @@ struct {
 } bcache;
 
 void
-binit(void)
-{
+binit(void) {
   struct buf *b;
 
   initlock(&bcache.lock, "bcache");
@@ -59,8 +58,7 @@ binit(void)
 // If not found, allocate a buffer.
 // In either case, return locked buffer.
 static struct buf*
-bget(uint dev, uint blockno)
-{
+bget(uint dev, uint blockno) {
   struct buf *b;
 
   acquire(&bcache.lock);
@@ -94,8 +92,7 @@ bget(uint dev, uint blockno)
 
 // Return a locked buf with the contents of the indicated block.
 struct buf*
-bread(uint dev, uint blockno)
-{
+bread(uint dev, uint blockno) {
   struct buf *b;
 
   b = bget(dev, blockno);
@@ -107,8 +104,7 @@ bread(uint dev, uint blockno)
 
 // Write b's contents to disk.  Must be locked.
 void
-bwrite(struct buf *b)
-{
+bwrite(struct buf *b) {
   if(!holdingsleep(&b->lock))
     panic("bwrite");
   b->flags |= B_DIRTY;
@@ -118,8 +114,7 @@ bwrite(struct buf *b)
 // Release a locked buffer.
 // Move to the head of the MRU list.
 void
-brelse(struct buf *b)
-{
+brelse(struct buf *b) {
   if(!holdingsleep(&b->lock))
     panic("brelse");
 
@@ -141,4 +136,3 @@ brelse(struct buf *b)
 }
 //PAGEBREAK!
 // Blank page.
-

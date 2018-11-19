@@ -15,40 +15,52 @@
 
 // Fetch the int at addr from the current process.
 int
-fetchint(uint addr, int *ip)
-{
+fetchint(uint addr, int *ip) {
   struct proc *curproc = myproc();
+  uint stack_bottom = KERNBASE - (PGSIZE * curproc->stack_sz);
 
-  if(addr >= curproc->sz || addr+4 > curproc->sz)
+  if((addr >= stack_bottom && addr+4 <= (KERNBASE - 1))) {
+    *ip = *(int*)(addr);
+    return 0;
+  } else if(addr >= curproc->sz || addr+4 > curproc->sz || addr > KERNBASE){
     return -1;
+  }
+
   *ip = *(int*)(addr);
   return 0;
 }
 
-// Fetch the nul-terminated string at addr from the current process.
+// Fetch the null-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
 int
-fetchstr(uint addr, char **pp)
-{
+fetchstr(uint addr, char **pp) {
   char *s, *ep;
   struct proc *curproc = myproc();
-
-  if(addr >= curproc->sz)
+  uint stack_bottom = KERNBASE - (PGSIZE * curproc->stack_sz);
+  
+  if((addr >= stack_bottom && (addr + 4) <= (KERNBASE - 1))) {
+    *pp = (char*)addr;
+    ep = (char*)KERNBASE;
+    for(s = *pp; s < ep; s++)
+      if(*s == 0)
+        return s - *pp;
     return -1;
-  *pp = (char*)addr;
-  ep = (char*)curproc->sz;
-  for(s = *pp; s < ep; s++){
-    if(*s == 0)
-      return s - *pp;
+  } else if(addr >= curproc->sz || addr > KERNBASE){
+    return -1;
   }
+  
+  *pp = (char*)addr;
+    ep = (char*)KERNBASE;
+    for(s = *pp; s < ep; s++)
+      if(*s == 0)
+        return s - *pp;
   return -1;
 }
 
 // Fetch the nth 32-bit system call argument.
 int
-argint(int n, int *ip)
-{
+argint(int n, int *ip) {
   return fetchint((myproc()->tf->esp) + 4 + 4*n, ip);
 }
 
@@ -56,15 +68,20 @@ argint(int n, int *ip)
 // to a block of memory of size bytes.  Check that the pointer
 // lies within the process address space.
 int
-argptr(int n, char **pp, int size)
-{
+argptr(int n, char **pp, int size) {
   int i;
   struct proc *curproc = myproc();
+  uint stack_bottom = KERNBASE - (PGSIZE * curproc->stack_sz);
  
   if(argint(n, &i) < 0)
     return -1;
-  if(size < 0 || (uint)i >= curproc->sz || (uint)i+size > curproc->sz)
+  if((uint)i >= stack_bottom && ((uint)i + size) <= (KERNBASE - 1)) {
+    *pp = (char*)i;
+    return 0;
+  } else if(size < 0 || (uint)i >= curproc->sz || ((uint)i + size) > curproc->sz || ((uint)i + size) > KERNBASE) {
     return -1;
+  }
+ 
   *pp = (char*)i;
   return 0;
 }
@@ -74,8 +91,7 @@ argptr(int n, char **pp, int size)
 // (There is no shared writable memory, so the string can't change
 // between this check and being used by the kernel.)
 int
-argstr(int n, char **pp)
-{
+argstr(int n, char **pp) {
   int addr;
   if(argint(n, &addr) < 0)
     return -1;
@@ -103,6 +119,11 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+extern int sys_getdate(void);
+extern int sys_setdate(void);
+extern int sys_mount(void);
+extern int sys_unmount(void);
+extern int sys_lseek(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -126,15 +147,19 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+[SYS_getdate] sys_getdate, 
+[SYS_setdate] sys_setdate,
+[SYS_mount]   sys_mount,
+[SYS_unmount] sys_unmount,
+[SYS_lseek]   sys_lseek,
 };
 
 void
-syscall(void)
-{
+syscall(void) {
   int num;
   struct proc *curproc = myproc();
 
-  num = curproc->tf->eax;
+  num = curproc->tf->eax; // Syscall number
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
     curproc->tf->eax = syscalls[num]();
   } else {

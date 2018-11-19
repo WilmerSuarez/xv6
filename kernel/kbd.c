@@ -4,8 +4,7 @@
 #include "kbd.h"
 
 int
-kbdgetc(void)
-{
+kbdgetc(void) {
   static uint shift;
   static uchar *charcode[4] = {
     normalmap, shiftmap, ctlmap, ctlmap
@@ -44,7 +43,6 @@ kbdgetc(void)
 }
 
 void
-kbdintr(void)
-{
+kbdintr(void) {
   consoleintr(kbdgetc);
 }

@@ -50,6 +50,9 @@ struct dinode {
 // Directory is a file containing a sequence of dirent structures.
 #define DIRSIZ 14
 
+/* Returns the smallest of the two given paramaeters */
+#define min(a, b) ((a) < (b) ? (a) : (b))
+
 struct dirent {
   ushort inum;
   char name[DIRSIZ];

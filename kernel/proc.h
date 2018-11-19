@@ -1,3 +1,6 @@
+#ifndef PROC_H
+#define PROC_H
+
 // Per-CPU state
 struct cpu {
   uchar apicid;                // Local APIC ID
@@ -37,10 +40,15 @@ enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
+  uint stack_sz;               // Size of stack (Number of pages)
+  uint swapped;                // Swapped or Resident flag
+  uint sector;                 // Starting Disk Sector where the process is being stored
+  uint t;                      // Amount of time swapped out
   pde_t* pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
-  enum procstate state;        // Process state
+  enum procstate state;        // Process stat
   int pid;                     // Process ID
+  int exit_status;             // Process exit status
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
@@ -56,3 +64,5 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+#endif // PROC_H

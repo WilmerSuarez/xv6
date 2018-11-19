@@ -8,8 +8,8 @@
 
 .globl swtch
 swtch:
-  movl 4(%esp), %eax
-  movl 8(%esp), %edx
+  movl 4(%esp), %eax # OLD context
+  movl 8(%esp), %edx # NEW context
 
   # Save old callee-save registers
   pushl %ebp

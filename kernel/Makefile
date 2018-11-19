@@ -11,12 +11,14 @@ OBJS = \
 	kalloc.o\
 	kbd.o\
 	lapic.o\
+	ledit.o\
 	log.o\
 	main.o\
 	mp.o\
 	picirq.o\
 	pipe.o\
 	proc.o\
+	semaphore.o\
 	sleeplock.o\
 	spinlock.o\
 	string.o\
@@ -28,7 +30,7 @@ OBJS = \
 	trap.o\
 	uart.o\
 	vectors.o\
-	vm.o
+	vm.o\
 
 kernel: $(OBJS) entry.o entryother initcode kernel.ld
 	$(LD) $(LDFLAGS) -T kernel.ld -o kernel entry.o $(OBJS) -b binary initcode entryother

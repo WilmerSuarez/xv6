@@ -27,6 +27,17 @@ static void itrunc(struct inode*);
 // only one device
 struct superblock sb; 
 
+/* 
+  Mount table maps inodes of mount points to major and 
+  minor device numbers of the mounted device 
+*/
+struct mount_table {
+  struct inode *mpnode;   // Target (mount point) Inode 
+  uint mounted;           // Does this entry exist?
+  uint major;             // Major device number of disk to be mounted
+  uint minor;             // Minor device number of disk to be mounted
+} mount_table[NINODE] = { 0 };
+
 // Read the super block.
 void
 readsb(int dev, struct superblock *sb)
@@ -240,8 +251,7 @@ iupdate(struct inode *ip)
 // and return the in-memory copy. Does not lock
 // the inode and does not read it from disk.
 static struct inode*
-iget(uint dev, uint inum)
-{
+iget(uint dev, uint inum) {
   struct inode *ip, *empty;
 
   acquire(&icache.lock);
@@ -286,8 +296,7 @@ idup(struct inode *ip)
 // Lock the given inode.
 // Reads the inode from disk if necessary.
 void
-ilock(struct inode *ip)
-{
+ilock(struct inode *ip) {
   struct buf *bp;
   struct dinode *dip;
 
@@ -314,8 +323,7 @@ ilock(struct inode *ip)
 
 // Unlock the given inode.
 void
-iunlock(struct inode *ip)
-{
+iunlock(struct inode *ip) {
   if(ip == 0 || !holdingsleep(&ip->lock) || ip->ref < 1)
     panic("iunlock");
 
@@ -459,7 +467,7 @@ readi(struct inode *ip, char *dst, uint off, uint n)
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].read)
       return -1;
-    return devsw[ip->major].read(ip, dst, n);
+    return devsw[ip->major].read(ip, dst, n, off);
   }
 
   if(off > ip->size || off + n < off)
@@ -480,15 +488,14 @@ readi(struct inode *ip, char *dst, uint off, uint n)
 // Write data to inode.
 // Caller must hold ip->lock.
 int
-writei(struct inode *ip, char *src, uint off, uint n)
-{
+writei(struct inode *ip, char *src, uint off, uint n) {
   uint tot, m;
   struct buf *bp;
 
   if(ip->type == T_DEV){
     if(ip->major < 0 || ip->major >= NDEV || !devsw[ip->major].write)
       return -1;
-    return devsw[ip->major].write(ip, src, n);
+    return devsw[ip->major].write(ip, src, n, off);
   }
 
   if(off > ip->size || off + n < off)
@@ -523,8 +530,7 @@ namecmp(const char *s, const char *t)
 // Look for a directory entry in a directory.
 // If found, set *poff to byte offset of entry.
 struct inode*
-dirlookup(struct inode *dp, char *name, uint *poff)
-{
+dirlookup(struct inode *dp, char *name, uint *poff) {
   uint off, inum;
   struct dirent de;
 
@@ -623,8 +629,7 @@ skipelem(char *path, char *name)
 // path element into name, which must have room for DIRSIZ bytes.
 // Must be called inside a transaction since it calls iput().
 static struct inode*
-namex(char *path, int nameiparent, char *name)
-{
+namex(char *path, int nameiparent, char *name) {
   struct inode *ip, *next;
 
   if(*path == '/')
@@ -643,12 +648,29 @@ namex(char *path, int nameiparent, char *name)
       iunlock(ip);
       return ip;
     }
+    if(!strncmp(name, "..", 2)) {
+      /* Is there a mount table entry for this device? */ 
+      if(mount_table[ip->dev].mounted) {
+        iunlockput(ip);
+        ip = mount_table[ip->dev].mpnode;
+        ilock(ip);
+        idup(ip);
+      }
+    }
     if((next = dirlookup(ip, name, 0)) == 0){
       iunlockput(ip);
       return 0;
     }
     iunlockput(ip);
     ip = next;
+    /* Is the directory a mount point? */
+    for(uint i = 0; i < NINODE; ++i) {
+      if(ip == mount_table[i].mpnode) {
+        /* Swich ip with root inode of mounted device */
+        ip = iget(mount_table[i].minor, ROOTINO);
+        break;
+      }
+    }
   }
   if(nameiparent){
     iput(ip);
@@ -658,14 +680,78 @@ namex(char *path, int nameiparent, char *name)
 }
 
 struct inode*
-namei(char *path)
-{
+namei(char *path) {
   char name[DIRSIZ];
   return namex(path, 0, name);
 }
 
 struct inode*
-nameiparent(char *path, char *name)
-{
+nameiparent(char *path, char *name) {
   return namex(path, 1, name);
+}
+
+/*
+  Mount other file system to original file system
+*/
+int             
+mount(char *source, char *target) {
+  struct inode *snode, *tnode;
+  
+  /* Get source & target inodes */
+  snode = namei(source);
+  tnode = namei(target);
+
+  ilock(snode);
+
+  /* Prevent multiple devices from mounting on to the same mount point */
+  for(uint i = 0; i < NINODE; ++i) {
+    if(mount_table[i].mpnode == tnode) {
+      iunlock(snode);
+      cprintf("Cannot mount multiple devices to a single mount point!\n");
+      return -1;
+    }
+  }
+  /* Prevent mounting the same device on multiple mount points */
+  if(mount_table[snode->minor].mounted) {
+    iunlock(snode);
+    cprintf("Cannot mount the same device on multiple mount points!\n");
+    return -1;
+  }
+
+  /* Add entry to table */
+  mount_table[snode->minor].mounted = 1;
+  mount_table[snode->minor].mpnode = tnode;
+  mount_table[snode->minor].major = snode->major;
+  mount_table[snode->minor].minor = snode->minor;  
+
+  iunlock(snode);
+
+  return 0;
+}
+
+/*
+  Unmount a previously mounted file system
+*/
+int             
+unmount(char *target) {
+  struct inode *tnode = namei(target);
+
+  ilock(tnode);
+
+  /* If mount table entry does not exist */
+  if(!mount_table[tnode->dev].mounted) {
+    cprintf("Mount table entry doest not exist!\n");
+    iunlock(tnode);
+    return -1;
+  }
+
+  /* Remove entry from table */
+  mount_table[tnode->minor].mounted = 0;
+  mount_table[tnode->dev].mpnode = 0; 
+  mount_table[tnode->dev].major = 0;
+  mount_table[tnode->dev].minor = 0;
+  
+  iunlock(tnode);
+
+  return 0;
 }

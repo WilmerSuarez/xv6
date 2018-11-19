@@ -1,3 +1,5 @@
+#ifndef TRAPS_H
+#define TRAPS_H
 // x86 trap and interrupt constants.
 
 // Processor-defined:
@@ -31,8 +33,11 @@
 
 #define IRQ_TIMER        0
 #define IRQ_KBD          1
+#define IRQ_COM2         3
 #define IRQ_COM1         4
-#define IRQ_IDE         14
-#define IRQ_ERROR       19
-#define IRQ_SPURIOUS    31
+#define IRQ_IDE_P        14     // Triggered when primary disk drive has completed a request
+#define IRQ_IDE_S        15     // Triggered when secondary disk drive has completed a request
+#define IRQ_ERROR        19
+#define IRQ_SPURIOUS     31
 
+#endif // TRAPS_H

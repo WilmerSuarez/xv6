@@ -8,6 +8,7 @@ ULIB = ulib.o usys.o printf.o umalloc.o
 
 UPROGS=\
 	_cat\
+	_df\
 	_echo\
 	_forktest\
 	_grep\
@@ -16,12 +17,21 @@ UPROGS=\
 	_ln\
 	_ls\
 	_mkdir\
+	_mount\
 	_rm\
 	_sh\
 	_stressfs\
+	_test_disks\
 	_usertests\
+	_umkfs\
+	_unmount\
 	_wc\
 	_zombie\
+	_gd\
+	_sd\
+	_exit_wait_test\
+	_stack_overflow\
+	_recurtest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
