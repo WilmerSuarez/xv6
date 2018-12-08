@@ -16,6 +16,8 @@ UPROGS=\
 	_kill\
 	_ln\
 	_ls\
+	_mapping_anon_test\
+	_mapping_file_test\
 	_mkdir\
 	_mount\
 	_rm\

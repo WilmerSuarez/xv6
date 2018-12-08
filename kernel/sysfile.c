@@ -15,6 +15,7 @@
 #include "sleeplock.h"
 #include "file.h"
 #include "fcntl.h"
+#include "mmap.h"
 
 // Fetch the nth word-sized system call argument as a file descriptor
 // and return both the descriptor and the corresponding struct file.
@@ -183,7 +184,7 @@ sys_read(void) {
   int n;
   char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n, 0) < 0)
     return -1;
   return fileread(f, p, n);
 }
@@ -194,7 +195,7 @@ sys_write(void) {
   int n;
   char *p;
 
-  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n) < 0)
+  if(argfd(0, 0, &f) < 0 || argint(2, &n) < 0 || argptr(1, &p, n, 0) < 0)
     return -1;
   return filewrite(f, p, n);
 }
@@ -227,20 +228,18 @@ sys_close(void) {
 }
 
 int
-sys_fstat(void)
-{
+sys_fstat(void) {
   struct file *f;
   struct stat *st;
 
-  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st)) < 0)
+  if(argfd(0, 0, &f) < 0 || argptr(1, (void*)&st, sizeof(*st), 0) < 0)
     return -1;
   return filestat(f, st);
 }
 
 // Create the path new as a link to the same inode as old.
 int
-sys_link(void)
-{
+sys_link(void) {
   char name[DIRSIZ], *new, *old;
   struct inode *dp, *ip;
 
@@ -289,8 +288,7 @@ bad:
 
 // Is the directory dp empty except for "." and ".." ?
 static int
-isdirempty(struct inode *dp)
-{
+isdirempty(struct inode *dp) {
   int off;
   struct dirent de;
 
@@ -305,8 +303,7 @@ isdirempty(struct inode *dp)
 
 //PAGEBREAK!
 int
-sys_unlink(void)
-{
+sys_unlink(void) {
   struct inode *ip, *dp;
   struct dirent de;
   char name[DIRSIZ], *path;
@@ -420,8 +417,7 @@ sys_chdir(void) {
 }
 
 int
-sys_exec(void)
-{
+sys_exec(void) {
   char *path, *argv[MAXARG];
   int i;
   uint uargv, uarg;
@@ -446,13 +442,12 @@ sys_exec(void)
 }
 
 int
-sys_pipe(void)
-{
+sys_pipe(void) {
   int *fd;
   struct file *rf, *wf;
   int fd0, fd1;
 
-  if(argptr(0, (void*)&fd, 2*sizeof(fd[0])) < 0)
+  if(argptr(0, (void*)&fd, 2*sizeof(fd[0]), 0) < 0)
     return -1;
   if(pipealloc(&rf, &wf) < 0)
     return -1;
@@ -468,4 +463,38 @@ sys_pipe(void)
   fd[1] = fd1;
   return 0;
 }
-  
+
+void *
+sys_mmap(void){
+  struct file *f;
+  uint length;
+  uint offset;
+  int flags;
+
+  /* Get flags argument */
+  if(argint(3, &flags) < 0)
+    return MAP_FAILED;
+
+  if(flags & MAP_FILE) {
+    /* Mapping a File */ 
+    if(argfd(0, 0, &f) < 0 || arguint(1, &length) < 0 || arguint(2, &offset) < 0)
+      return MAP_FAILED;
+    return mmap_file(f, length, offset, flags);
+  } else {
+    /* Anonymous Mapping */ 
+    if(arguint(1, &length) < 0)
+      return MAP_FAILED;
+    return mmap_anon(length, flags);
+  }
+}
+
+int
+sys_munmap(void) {
+  char *addr;
+  /* Get arguments */
+  if(argptr(0, &addr, 0, 1) < 0)
+    return -1;
+
+  /* Unmap the mapped region */
+  return munmap(addr);
+}

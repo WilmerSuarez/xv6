@@ -9,7 +9,10 @@
 // Key addresses for address space layout (see kmap in vm.c for layout)
 #define KERNBASE 0x80000000         // First kernel virtual address
 #define KERNLINK (KERNBASE+EXTMEM)  // Address where kernel is linked
+
+/* USER ADDRESS SPACE */
 #define STACKMAX 1024               // Max size of stack (Max number of pages)
+#define MAPPINGSTART 0x7FBFF000     // Memory Mapping Starting Virtual Address
 
 #define V2P(a) (((uint) (a)) - KERNBASE)
 #define P2V(a) (((void *) (a)) + KERNBASE)

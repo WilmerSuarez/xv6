@@ -32,6 +32,8 @@ int setdate(struct rtcdate *);
 int lseek(int, int, int);
 int mount(char *, char *);
 int unmount(char *);
+void *mmap(int, uint, uint, int);
+int munmap(void *);
 
 // ulib.c
 int stat(char*, struct stat*);

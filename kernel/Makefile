@@ -14,6 +14,7 @@ OBJS = \
 	ledit.o\
 	log.o\
 	main.o\
+	mmap.o\
 	mp.o\
 	picirq.o\
 	pipe.o\

@@ -40,8 +40,6 @@ walkpgdir(pde_t *pgdir, const void *va, int alloc) {
   if(*pde & PTE_P){
     pgtab = (pte_t*)P2V(PTE_ADDR(*pde)); // Get address of Page Table pointed to by top 20 bits of PDE
   } else { // If page table entry in Page Directory is not present, (has not yet been allocated) create Page Table for it and set flags
-    /* Increment the amount of page allocation needed - used by swap daemon */
-    mem_amount++;
     // Allocate memory for Page table entry of size (kalloc)
     if(!alloc || (pgtab = (pte_t*)kalloc()) == 0) 
       return 0;
@@ -122,8 +120,6 @@ setupkvm(void) {
   pde_t *pgdir;
   struct kmap *k;
 
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount++;
   // Allocate a page of memory to hold Page Directory
   if((pgdir = (pde_t*)kalloc()) == 0)
     return 0;
@@ -187,8 +183,7 @@ inituvm(pde_t *pgdir, char *init, uint sz) {
 
   if(sz >= PGSIZE)
     panic("inituvm: more than a page");
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount++;
+
   mem = kalloc();
   memset(mem, 0, PGSIZE);
   mappages(pgdir, 0, PGSIZE, V2P(mem), PTE_W|PTE_U);
@@ -229,9 +224,6 @@ allocuvm(pde_t *pgdir, uint oldsz, uint newsz) {
     return 0;
   if(newsz < oldsz)
     return oldsz;
-
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount += (PGROUNDUP(newsz - oldsz) / PGSIZE);
 
   a = PGROUNDUP(oldsz);
   for(; a < newsz; a += PGSIZE){
@@ -319,9 +311,6 @@ copyuvm(pde_t *pgdir, uint sz, uint stack_sz) {
   pte_t *pte;
   uint pa, i, flags;
   char *mem;
-
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount += ((sz/PGSIZE) + stack_sz);
 
   if((d = setupkvm()) == 0)
     return 0;

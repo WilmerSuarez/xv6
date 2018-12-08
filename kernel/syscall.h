@@ -28,5 +28,7 @@
 #define SYS_mount   24
 #define SYS_unmount 25
 #define SYS_lseek   26
+#define SYS_mmap    27
+#define SYS_munmap  28
 
 #endif // SYSCALL_H

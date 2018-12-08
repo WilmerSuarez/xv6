@@ -11,9 +11,6 @@
 #include "fs.h"
 #include "buf.h"
 
-uint swapp;
-uint mem_amount = 0;
-
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
@@ -99,8 +96,6 @@ found:
 
   release(&ptable.lock);
 
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount ++;
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -121,6 +116,9 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  /* Initialize Mapping Count */
+  p->m.map_count = 0;
 
   return p;
 }
@@ -443,7 +441,7 @@ roundrobin() {
   // Loop over process table looking for process to run.
   for(int i = 0; i < NPROC; i++) {
     struct proc *p = &ptable.proc[(i + rrindex + 1) % NPROC];
-    if(p->state != RUNNABLE || p->swapped)
+    if(p->state != RUNNABLE)
       continue;
     rrindex = p - ptable.proc;
     return p;
@@ -743,8 +741,6 @@ found:
   p->parent = initproc;
   release(&ptable.lock);
 
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount ++;
   /* Allocate kernel stack */
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
