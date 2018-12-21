@@ -1,6 +1,6 @@
-
-
 # XV6 PROCESSES
+
+***
 
 ## Kernel Semaphores
 
@@ -31,11 +31,11 @@ The semaphore is initialized with the value of 0. After the Disk Driver
 appends the new disk access request to the ide-queue, the semaphore sees 
 that the current semaphore value is 0 and puts the current process to 
 sleep. Once the IDEs ISR is executed, after the request has been serviced, 
-the associated process is awoken to allow it to continue out of the Disk Driver. 
+the associated process is awoken and continues out of the Disk Driver. 
 
  - ```./usertests``` 
 	 - [x] passed
-*********************************************************
+***
 ## Extensible User Stacks
 Stack is made automatically extensible. The stack is placed right below 
 the start of the Kernel address space. Instead of being limited to a 
@@ -79,7 +79,7 @@ the process is killed.
 *Number of bytes:* **3776**  
 **After Automatically Extensible Stack:** 
 *Number of bytes:* **4193984**
-*********************************************************
+***
 ## Multiple Shell Sessions
 Adding support to XV6 to allow multiple shell sessions to run 
 simultaneously. The system Console and serial port devices, 
@@ -87,7 +87,7 @@ COM1 and COM2 will each support a shell.
 
 **Changes made:**
 The console driver ```console.c``` and the device driver ```uart.c``` 
-were '*detached*' (the console and the terminal(*COM1*)). Next, the device driverwas given the same functionality of the console by:
+were '*detached*' (the console and the terminal(*COM1*)). Next, the device driver was given the same functionality of the console by:
  1. Allowing it to wait for users to edit a line before pressing '*ENTER*'.
  2. Setting up its own entry in the Device Switch table for reading from and writing
  to the driver.
@@ -98,10 +98,10 @@ whenever a shell terminates.
 To incorporate both COM1 and COM2, the ```uart.c``` file was changed to support 
 multiple devices. 
 
-Lastly, both UART devices (COM1 & COM2) were made remotely accesible over a network through telnet. 
+Lastly, both UART devices (COM1 & COM2) were made remotely accesible over a network through the command *telnet*. 
 
 ### Multiple Shell Sessions Tests:
  - ./usertests 
 	 - [x] passed
  
-*********************************************************
+***
