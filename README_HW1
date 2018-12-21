@@ -2,7 +2,6 @@
 
 Three features were added to the operating system.
 
-
 **getdate system-call:** 
 ```
 Read CMOS Real-Time-Clock registers.

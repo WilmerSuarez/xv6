@@ -34,6 +34,6 @@ void sem_P(struct semaphore *sp) {
 void sem_V(struct semaphore *sp) {
     acquire(&sp->semlock);
     sp->val += 1;
-    wakeup(sp);
+    wakeup(sp);`
     release(&sp->semlock);
 }

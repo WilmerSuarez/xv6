@@ -154,12 +154,14 @@ trap(struct trapframe *tf) {
         cprintf("Reached Stack size limit\n");
         goto kill;
       }
+      lapiceoi();
       return;
     } else {
       /* Handle mmap Allocation */
       if(mmap_pgfault(tf) < 0) {
         goto kill;
       }
+      lapiceoi();
       return;
     }
   }
