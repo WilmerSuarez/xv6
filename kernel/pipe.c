@@ -28,8 +28,6 @@ pipealloc(struct file **f0, struct file **f1)
   *f0 = *f1 = 0;
   if((*f0 = filealloc()) == 0 || (*f1 = filealloc()) == 0)
     goto bad;
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount++;
   if((p = (struct pipe*)kalloc()) == 0)
     goto bad;
   p->readopen = 1;

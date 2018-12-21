@@ -32,6 +32,11 @@ void            panic(char*) __attribute__((noreturn));
 // exec.c
 int             exec(char*, char**);
 
+// mmap.c
+void *          mmap_file(struct file *, uint, uint, int);
+void *          mmap_anon(uint, int);
+int             munmap(void *);
+
 // file.c
 struct file*    filealloc(void);
 void            fileclose(struct file*);
@@ -137,8 +142,6 @@ int             validate_date(struct rtcdate *);
 int             validate_time(struct rtcdate *);
 void            kfork(void (*)(void));
 void            daemonsinit(void);
-extern uint     swapp;
-extern uint     mem_amount;
 
 // swtch.S
 void            swtch(struct context**, struct context*);
@@ -169,8 +172,10 @@ char*           strncpy(char*, const char*, int);
 
 // syscall.c
 int             argint(int, int*);
-int             argptr(int, char**, int);
+uint            arguint(int, uint*);
+int             argptr(int, char**, int, uint);
 int             argstr(int, char**);
+uint            fetchuint(uint, uint*);
 int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);

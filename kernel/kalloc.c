@@ -86,25 +86,10 @@ kalloc(void) {
   if(kmem.use_lock)
     acquire(&kmem.lock);
 
-  
-  while(!(r = kmem.freelist)) {
-    /* 
-      If no memory currently available, Wakeup swap 
-      daemon & sleep until swap has made memory available 
-    */
-    //cprintf("wake up swap - from kalloc\n");
-    //wakeup(&swapp);
-    //cprintf("Kalloc sleeping\n");
-    //sleep(&swapp, &kmem.lock);
-    //cprintf("Kalloc awake\n");
-    goto done;
-  }
-
-  kmem.freelist = r->next;
-  /* Decrement amount of memory serviced */
-  --mem_amount;
-
-done: 
+  r = kmem.freelist;
+  if(r)
+    kmem.freelist = r->next;
+    
   if(kmem.use_lock)
     release(&kmem.lock);
     

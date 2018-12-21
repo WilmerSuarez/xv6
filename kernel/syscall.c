@@ -13,6 +13,23 @@
 // library system call function. The saved user %esp points
 // to a saved program counter, and then the first argument.
 
+/* Fetch the uint at the addr in the current process */
+uint
+fetchuint(uint addr, uint *ip) {
+  struct proc *curproc = myproc();
+  uint stack_bottom = KERNBASE - (PGSIZE * curproc->stack_sz);
+
+  if((addr >= stack_bottom && addr+4 <= (KERNBASE - 1))) {
+    *ip = *(uint*)(addr);
+    return 0;
+  } else if(addr >= curproc->sz || addr+4 > curproc->sz || addr > KERNBASE){
+    return -1;
+  }
+
+  *ip = *(uint*)(addr);
+  return 0;
+}
+
 // Fetch the int at addr from the current process.
 int
 fetchint(uint addr, int *ip) {
@@ -64,17 +81,34 @@ argint(int n, int *ip) {
   return fetchint((myproc()->tf->esp) + 4 + 4*n, ip);
 }
 
+uint 
+arguint(int n, uint *ip) {
+  return fetchuint((myproc()->tf->esp) + 4 + 4*n, ip);
+}
+
 // Fetch the nth word-sized system call argument as a pointer
 // to a block of memory of size bytes.  Check that the pointer
 // lies within the process address space.
 int
-argptr(int n, char **pp, int size) {
+argptr(int n, char **pp, int size, uint mm) {
   int i;
   struct proc *curproc = myproc();
   uint stack_bottom = KERNBASE - (PGSIZE * curproc->stack_sz);
  
   if(argint(n, &i) < 0)
     return -1;
+
+  /* If unmapping - Test if address pointing to start of a Mapped Region */
+  if(mm) {
+    for(uint i = 0; i < MAPMAX; ++i) {
+      if((uint)curproc->m.maps[i].s_addr == i) {
+        size = curproc->m.maps[i].length;
+        break;
+      }
+    }
+    return -1; // Address is not start of mapped region
+  }
+  
   if((uint)i >= stack_bottom && ((uint)i + size) <= (KERNBASE - 1)) {
     *pp = (char*)i;
     return 0;
@@ -124,6 +158,8 @@ extern int sys_setdate(void);
 extern int sys_mount(void);
 extern int sys_unmount(void);
 extern int sys_lseek(void);
+extern int sys_mmap(void);
+extern int sys_munmap(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -152,6 +188,8 @@ static int (*syscalls[])(void) = {
 [SYS_mount]   sys_mount,
 [SYS_unmount] sys_unmount,
 [SYS_lseek]   sys_lseek,
+[SYS_mmap]    sys_mmap,
+[SYS_munmap]  sys_munmap
 };
 
 void

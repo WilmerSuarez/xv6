@@ -1,5 +1,6 @@
 #ifndef PROC_H
 #define PROC_H
+#include "mmap.h"
 
 // Per-CPU state
 struct cpu {
@@ -37,14 +38,32 @@ struct context {
 
 enum procstate { UNUSED, EMBRYO, SLEEPING, RUNNABLE, RUNNING, ZOMBIE };
 
+struct map_node {
+  /* Node Data */
+  uint dirty;             // Mapped Region Modified?
+  uint mapped;            // Mapped Flag
+  void *s_addr;           // Mapped Region Start Address
+  void *e_addr;           // Mapped Region Ending Address
+  uint length;            // Mapped Region Length
+  struct file *file;      // File to be Mapped
+  uint offset;            // Offset into file == Starting Address
+  int flags;              // Mapped Region Flags: MAP_FILE & MAP_SHARED
+};
+
+/* Per-process Memory Map List */
+struct mapList {
+  uint map_count;               // Current number of mappings
+  struct map_node maps[MAPMAX]; 
+};
+
 // Per-process state
 struct proc {
   uint sz;                     // Size of process memory (bytes)
   uint stack_sz;               // Size of stack (Number of pages)
-  uint swapped;                // Swapped or Resident flag
+  struct mapList m;            // Memory Map List
   uint sector;                 // Starting Disk Sector where the process is being stored
   uint t;                      // Amount of time swapped out
-  pde_t* pgdir;                // Page table
+  pde_t *pgdir;                // Page table
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process stat
   int pid;                     // Process ID

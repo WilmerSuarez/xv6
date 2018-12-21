@@ -24,7 +24,7 @@ sys_exit(void) {
 int
 sys_wait(void) {
   int *estatus;
-  if(argptr(0, (char **) &estatus, sizeof(estatus)) < 0)
+  if(argptr(0, (char **) &estatus, sizeof(estatus), 0) < 0)
     return -1;
   return wait(estatus);
 }
@@ -92,7 +92,7 @@ int
 sys_getdate(void) {
   struct rtcdate *r;
 
-  if(argptr(0, (char **) &r, sizeof(r)) < 0) 
+  if(argptr(0, (char **) &r, sizeof(r), 0) < 0) 
     return -1;
 
   return getdate(r);
@@ -102,7 +102,7 @@ int
 sys_setdate(void) {
   struct rtcdate *r;
 
-  if(argptr(0, (char **) &r, sizeof(r)) < 0)
+  if(argptr(0, (char **) &r, sizeof(r), 0) < 0)
     return -1;
 
   return setdate(r);

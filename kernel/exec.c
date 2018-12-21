@@ -67,11 +67,11 @@ exec(char *path, char **argv) {
   end_op();
   ip = 0;
 
-  // Allocate a page of memory for the User Stack 
-  // below KERNBASE.
+  /*
+    Allocate a page of memory for the User Stack  
+    below KERNBASE.
+  */
   sp = KERNBASE - PGSIZE;
-  /* Increment the amount of page allocation needed - used by swap daemon */
-  mem_amount++;
   // Allocate one page (4096 Bytes) of physical memory
   if((mem = kalloc()) == 0) { 
     cprintf("Could not allocate initial Stack Page");
@@ -79,7 +79,7 @@ exec(char *path, char **argv) {
   }  
   // Initialize Physical Page to 0
   memset(mem, 0, PGSIZE); 
-  // Map the page address to a physical page.
+  // Map the virtual address to a physical page.
   if(mappages(pgdir, (char*)sp, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0)
     goto bad;
   // Initialize stack size and point to start of stack (Just under KERNBASE). 
