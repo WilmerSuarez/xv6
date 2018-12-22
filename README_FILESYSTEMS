@@ -1,5 +1,5 @@
 # Filesystems
-
+***
 ## Second IDE Controller
 
 Enabling the use of a second IDE controller to support 2 more disks.
@@ -13,7 +13,7 @@ used.
  - ```./usertests``` 
 	 - [x] passed
 
-*********************************************************
+***
 ## Disk Device Nodes 
 
 The four disk devices were made to be accessible by user programs. 
@@ -34,10 +34,10 @@ disks to be read or written using the bread/bwrite functions.
  - ```./usertests```
 	 - [x] passed
 
-*********************************************************
+***
 ## "Native" mkfs
 
-The mkfs program was re-made into a user usable program
+The mkfs program was copied and re-made into a user usable program
 named umfks. The program accepts a disk device node name,
 opens the device and creates an empty filesystem in it with 
 entries '.' and '..'
@@ -47,16 +47,16 @@ entries '.' and '..'
  - ```./usertests```
 	 - [x] passed 
 
-*********************************************************
+***
 ## Mount and Unmount
 
 Mounting and Unmounting functionallity was added.
 A **mount table** was created that holds the inodes of 
-mount points a long with the major and minor device numbers.
+mount points and the major and minor device numbers.
 During pathname resolution, the table is searched to test if 
 mounting point is found. If it is, then the root inode for the 
-mounted device is followed.  
-Unmounting removes the mount point from the mount table.
+mounted device is followed. Unmounting removes the mount point 
+from the mount table.
 
 Issues:
 	The first issue resolved was the ability to return the the parent
@@ -96,7 +96,7 @@ Issues:
 	```mount /disk2 /mnt```
 	```ls /mnt```
 
-	- disk3 was tested the same
+	- disk3 was tested the same way
 
 	- Create two mount points and mount disk2 and disk3 to the first and second respectively, and 
 	perform the same test ^
@@ -113,6 +113,6 @@ Issues:
 
 	- ```./usertests``` - Allowed for umkfs and mkfs to use more blocks (increased FSSIZE) so that bigfile test can succeed
 						- made size 10000 (bigfile tests takes a minute or two)
-	 - [x] passed 		- Reverted back to size 1000 for regular use (umkfs takes too long because of the block zeroing - removing block zeroing causes panic in ilock).
+	    - [x] passed 		- Reverted back to size 1000 for regular use (umkfs takes too long because of the block zeroing - removing block zeroing causes panic in ilock).
 
-*********************************************************
+***
