@@ -1,5 +1,5 @@
 # Virtual Memory
-
+***
 ## MMAP() SYSTEM CALL
 
 This system call allows for memory to be "mapped" in a processes 
@@ -34,4 +34,4 @@ The system call also allows for faster file reads/writes.
 		- Read it. 
 
 
-*********************************************************
+***
