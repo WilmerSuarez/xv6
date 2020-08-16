@@ -1,8 +1,0 @@
-*~
-_*
-*.o
-*.d
-*.asm
-*.sym
-*.img
-bootblock
